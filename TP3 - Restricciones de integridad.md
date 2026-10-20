@@ -15,6 +15,8 @@ Alcance de atributo, tupla, tabla y general; DOMAIN, PK, UNIQUE, NOT NULL y FK.
 
 Acciones ON DELETE/ON UPDATE y tratamiento de nulos con MATCH SIMPLE, FULL y PARTIAL.
 
+Para el **ejercicio 1.a**: [[MATCH SIMPLE, FULL y PARTIAL#Ejercicio 1.a — Agregar claves foráneas con ALTER TABLE|guía paso a paso y ejemplos de ALTER TABLE con FK simples y compuestas]].
+
 ## 3. [[CHECK y lógica de tres valores|CHECK y ASSERTION]]
 
 Chequeos de fila, lógica de tres valores, implicaciones, conteos y aserciones del estándar.
@@ -22,6 +24,12 @@ Chequeos de fila, lógica de tres valores, implicaciones, conteos y aserciones d
 ## 4. [[Análisis de operaciones y restricciones|Análisis de ejercicios y operaciones]]
 
 Método para simular operaciones, distinguir casos acumulativos y reconocer controles que requieren otros eventos.
+
+## Resolución del práctico
+
+[[Resolución del TP3 - Restricciones de integridad|Respuestas y consultas del TP3]]
+
+Archivo para ir completando la resolución del práctico.
 
 ## Checklist del práctico
 
