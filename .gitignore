@@ -1,0 +1,10 @@
+# Estado local de Obsidian
+.obsidian/workspace*.json
+.obsidian/cache/
+.trash/
+
+# Archivos locales del sistema
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp

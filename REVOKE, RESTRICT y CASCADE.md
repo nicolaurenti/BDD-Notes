@@ -1,0 +1,25 @@
+---
+tags:
+  - tp6
+---
+
+# REVOKE, RESTRICT y CASCADE
+
+
+```sql
+REVOKE SELECT ON TABLE instalacion FROM adm CASCADE;
+
+REVOKE GRANT OPTION FOR UPDATE
+ON TABLE instalacion FROM adm CASCADE;
+```
+
+- La primera retira SELECT a adm y las concesiones dependientes de ese camino.
+- La segunda quita su capacidad de delegar UPDATE, pero conserva su UPDATE propio; las delegaciones dependientes se revisan con CASCADE.
+- RESTRICT rechaza la revocación si existen concesiones dependientes que requieran retirarse.
+- CASCADE no elimina indiscriminadamente todos los permisos del receptor: pueden persistir concesiones independientes.
+
+### Un permiso de tabla no se resta revocando una columna
+
+Si se otorgó `UPDATE ON instalacion`, revocar `UPDATE(tarea)` no elimina el permiso sobre esa columna que sigue cubierto por el UPDATE de toda la tabla.
+
+Para dejar acceso solo a ciertas columnas, retirar la concesión amplia correspondiente y conceder el subconjunto permitido, revisando permisos alternativos y dependencias. Por eso, en el ejercicio 1, no asumir que revocar la columna `tarea` a adm elimina el UPDATE de tabla que recibió al comienzo. [REVOKE y permisos a nivel de columna](https://www.postgresql.org/docs/current/sql-revoke.html).
