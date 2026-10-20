@@ -27,39 +27,25 @@ Se declaran en la tabla que contiene la FK, pero se activan al modificar o borra
 
 Base técnica: [restricciones y acciones referenciales en PostgreSQL](https://www.postgresql.org/docs/current/ddl-constraints.html#DDL-CONSTRAINTS-FK).
 
-## Ejercicio 1.a — Agregar claves foráneas con ALTER TABLE
+## Agregar restricciones de integridad referencial con ALTER TABLE
 
-El enunciado indica que las tablas y sus PK **ya existen**. Se pide incorporar las restricciones de integridad referencial (RIR), por lo que corresponde usar `ALTER TABLE ... ADD CONSTRAINT`, sin volver a crear las tablas.
+Cuando las tablas ya existen, se pueden incorporar claves foráneas mediante `ALTER TABLE ... ADD CONSTRAINT`. Los siguientes ejemplos usan una biblioteca: `libro`, `ejemplar` y `prestamo`.
 
-### Paso 1. Leer cada relación del diagrama
+### Identificar la tabla que contiene la referencia
 
 La **tabla hija** contiene la FK; la **tabla padre** contiene la clave referenciada. La sentencia se escribe sobre la hija.
 
-| RIR | Tabla hija y columnas FK | Tabla padre y clave referenciada | [Baja, modificación a derecha] |
-|---|---|---|---|
-| R1 | `Trabaja_En (TipoE, NroE)` | `Empleado (TipoE, NroE)` | `[C, R]` |
-| R2 | `Trabaja_En (IdProy)` | `Proyecto (IdProy)` | `[R, C]` |
-| R3 | `Auspicio (IdProy)` | `Proyecto (IdProy)` | `[R, R]` |
-| R4 | `Auspicio (TipoE, NroE)` | `Empleado (TipoE, NroE)` | `[N, R]` |
-
-Se usa `Trabaja_En`, como figura en el diagrama; algunas operaciones del texto lo escriben `TrabajaEn`. Al aplicar las sentencias, usar el nombre real de la tabla.
-
-### Paso 2. Traducir las acciones
-
-El primer componente del par corresponde a `ON DELETE`; el segundo a `ON UPDATE`. La «modificación a derecha» es el cambio de la clave referenciada en la tabla padre.
-
-| Símbolo | Cláusula SQL | Significado |
+| Relación del ejemplo | Tabla hija y FK | Tabla padre y clave referenciada |
 |---|---|---|
-| `R` | `RESTRICT` | Impide borrar o cambiar la clave del padre si hay referencias afectadas. |
-| `C` | `CASCADE` | Propaga el borrado o el cambio de clave a las filas hijas. |
-| `N` | `SET NULL` | Pone en NULL las columnas de la FK afectada. |
+| Cada ejemplar pertenece a un libro | `ejemplar (isbn)` | `libro (isbn)` |
+| Cada préstamo corresponde a un ejemplar | `prestamo (isbn, nro_ejemplar)` | `ejemplar (isbn, nro_ejemplar)` |
 
-Por ejemplo, `[C, R]` se traduce a `ON DELETE CASCADE ON UPDATE RESTRICT`.
+Se supone que `libro` tiene PK `(isbn)` y `ejemplar` tiene PK `(isbn, nro_ejemplar)`. Una FK también puede referenciar una clave declarada `UNIQUE` apropiada.
 
-### Paso 3. Completar la plantilla
+### Plantilla de la sentencia
 
 ```sql
--- Plantilla: reemplazar los marcadores por nombres del diagrama.
+-- Plantilla: sustituir los marcadores por nombres y acciones concretos.
 ALTER TABLE tabla_hija
 ADD CONSTRAINT nombre_de_la_restriccion
 FOREIGN KEY (columna_fk_1, columna_fk_2)
@@ -68,63 +54,83 @@ ON DELETE accion_de_baja
 ON UPDATE accion_de_modificacion;
 ```
 
-Para una FK simple, cada lista tiene una sola columna. `ADD CONSTRAINT` da un nombre a la regla; no agrega columnas ni cambia la PK existente.
+`ADD CONSTRAINT` agrega una regla con nombre. Las columnas deben existir y los datos ya almacenados deben cumplir la nueva restricción. Para una FK simple se indica una sola columna en cada lista.
 
-### Ejemplo resuelto 1: R1, una FK compuesta
+### Ejemplo de FK simple
 
-Cada asignación en `Trabaja_En` debe corresponder a un empleado existente, identificado por **la pareja** `(TipoE, NroE)`.
-
-```sql
-ALTER TABLE Trabaja_En
-ADD CONSTRAINT fk_r1_trabaja_en_empleado
-FOREIGN KEY (TipoE, NroE)
-REFERENCES Empleado (TipoE, NroE)
-ON DELETE CASCADE
-ON UPDATE RESTRICT;
-```
-
-Lectura de cada parte:
-
-- `ALTER TABLE Trabaja_En`: se modifica la tabla que contiene la referencia.
-- `FOREIGN KEY (TipoE, NroE)`: ambos atributos forman **una sola FK**.
-- `REFERENCES Empleado (TipoE, NroE)`: se exige esa misma combinación en Empleado, respetando el orden de las columnas.
-- `ON DELETE CASCADE`: al borrar el empleado, R1 propaga el borrado a sus asignaciones.
-- `ON UPDATE RESTRICT`: si tiene asignaciones, R1 impide cambiar su clave referenciada.
-
-Por ejemplo, con empleados `('A', 1)` y `('B', 2)`, una asignación para `('A', 2)` no cumple esta FK. No alcanza con que exista el tipo A en una fila y el número 2 en otra. Dos FK separadas tampoco expresan esta regla; además, las columnas referenciadas individualmente necesitarían su propia garantía de unicidad.
-
-Estos efectos describen R1: para decidir si una operación completa se acepta, también hay que comprobar las demás restricciones.
-
-### Ejemplo resuelto 2: R2, una FK simple
-
-Cada asignación debe referenciar un proyecto existente. Para `[R, C]`:
+Regla elegida: impedir borrar un libro si tiene ejemplares y propagar los cambios de su ISBN a esos ejemplares.
 
 ```sql
-ALTER TABLE Trabaja_En
-ADD CONSTRAINT fk_r2_trabaja_en_proyecto
-FOREIGN KEY (IdProy)
-REFERENCES Proyecto (IdProy)
+ALTER TABLE ejemplar
+ADD CONSTRAINT fk_ejemplar_libro
+FOREIGN KEY (isbn)
+REFERENCES libro (isbn)
 ON DELETE RESTRICT
 ON UPDATE CASCADE;
 ```
 
-Si un proyecto está referenciado desde `Trabaja_En`, R2 impide borrarlo. Si cambia su `IdProy`, R2 propaga la nueva clave a esas asignaciones. Otras restricciones podrían impedir la operación completa.
+- `ALTER TABLE ejemplar`: modifica la tabla hija.
+- `FOREIGN KEY (isbn)`: identifica la columna que contiene la referencia.
+- `REFERENCES libro (isbn)`: indica dónde debe existir el ISBN.
+- `ON DELETE RESTRICT`: impide borrar un libro mientras tenga ejemplares que lo referencien.
+- `ON UPDATE CASCADE`: si cambia el ISBN del libro, actualiza ese valor en sus ejemplares.
 
-### Para completar R3 y R4
+Si existe el libro con ISBN `'978-001'`, un ejemplar puede referenciarlo. Una referencia a `'978-999'` se rechaza si ese libro no existe.
 
-Aplicar la misma plantilla con las filas de la tabla inicial:
+### Ejemplo de FK compuesta
 
-- **R3:** alterar `Auspicio`, declarar la FK simple sobre `IdProy` y usar `RESTRICT` en ambas acciones.
-- **R4:** alterar `Auspicio`, declarar una única FK compuesta `(TipoE, NroE)` hacia Empleado y traducir `[N, R]`. En el diagrama ambas columnas admiten NULL, por lo que pueden recibir el resultado de `SET NULL`.
+Un ejemplar se identifica por la **combinación** de ISBN y número de ejemplar. El número por sí solo puede repetirse para libros diferentes.
 
-El apartado 1.a no fija un matching especial. Si se omite `MATCH`, PostgreSQL usa `MATCH SIMPLE`. El apartado 1.c pide comparar las modalidades de R4; no hay que declarar tres FK simultáneas para resolver esa comparación.
+Regla elegida: impedir borrar o cambiar la clave de un ejemplar mientras tenga préstamos que lo referencien.
 
-### Errores frecuentes al escribir el 1.a
+```sql
+ALTER TABLE prestamo
+ADD CONSTRAINT fk_prestamo_ejemplar
+FOREIGN KEY (isbn, nro_ejemplar)
+REFERENCES ejemplar (isbn, nro_ejemplar)
+ON DELETE RESTRICT
+ON UPDATE RESTRICT;
+```
+
+Las columnas se emparejan por posición: `isbn` con `isbn`, y `nro_ejemplar` con `nro_ejemplar`. Los nombres podrían ser diferentes en cada tabla; deben corresponderse sus tipos y su significado.
+
+Si los únicos ejemplares son `('978-001', 1)` y `('978-002', 2)`:
+
+| Referencia del préstamo | Resultado de la FK |
+|---|---|
+| `('978-001', 1)` | Válida: existe esa combinación. |
+| `('978-001', 2)` | Inválida: los valores aparecen por separado, pero no juntos en un ejemplar. |
+
+Dos FK independientes no reemplazan una FK compuesta: no comprobarían que los valores pertenezcan a la misma fila padre, y necesitarían claves referenciables individuales.
+
+### Elegir las acciones según la regla
+
+Las acciones anteriores son decisiones de los ejemplos. En otro modelo podrían corresponder otras acciones:
+
+```sql
+-- Fragmentos alternativos para la declaración de una FK:
+ON DELETE CASCADE
+ON UPDATE RESTRICT
+```
+
+`CASCADE` al borrar elimina las filas hijas que referencian al padre. Con `SET NULL`, en cambio, se conservan esas filas y se ponen en NULL las columnas de la FK; esas columnas deben admitir nulos.
+
+Cuando una consigna usa un par **[baja, modificación a derecha]**, el primer componente corresponde a `ON DELETE` y el segundo a `ON UPDATE`. La modificación a derecha se refiere al cambio de la clave referenciada en la tabla padre.
+
+| Símbolo | Acción SQL |
+|---|---|
+| `R` | `RESTRICT` |
+| `C` | `CASCADE` |
+| `N` | `SET NULL` |
+
+Las acciones se evalúan junto con las demás restricciones: una cascada puede quedar impedida por otra regla. Si se omite `MATCH`, PostgreSQL usa `MATCH SIMPLE`.
+
+### Errores frecuentes
 
 - Alterar la tabla padre en lugar de la hija.
-- Invertir `ON DELETE` y `ON UPDATE` al leer el par.
-- Usar solo `NroE` cuando la clave es `(TipoE, NroE)`.
-- Incluir toda la PK de `Trabaja_En` en la FK a Empleado: `IdProy`, `Anio` y `Mes` no pertenecen a esa referencia.
+- Invertir las acciones de baja y modificación.
+- Usar solo una parte de una clave compuesta o cambiar el orden de correspondencia.
+- Confundir la PK completa de la hija con las columnas que necesita una FK concreta.
 - Creer que `ON UPDATE CASCADE` permite asignar directamente a una hija una FK cuyo padre no existe.
 
 Ejemplos de estudio: no se ejecutó SQL. Sintaxis de referencia: [ALTER TABLE](https://www.postgresql.org/docs/current/sql-altertable.html) y [FOREIGN KEY y acciones referenciales](https://www.postgresql.org/docs/current/ddl-constraints.html#DDL-CONSTRAINTS-FK).
