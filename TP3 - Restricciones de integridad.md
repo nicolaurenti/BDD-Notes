@@ -5,19 +5,23 @@ tags:
 
 # Práctico 3 — Restricciones de integridad declarativas
 
-## 1. [[Alcance y clasificación de restricciones]]
+Cuatro bloques: clasificar la regla, controlar referencias, expresar chequeos y analizar las operaciones del práctico.
 
-## 2. [[PK, UNIQUE, NOT NULL y FK]]
+## 1. [[Alcance y clasificación de restricciones|Fundamentos y clasificación de restricciones]]
 
-## 3. [[Acciones referenciales]]
+Alcance de atributo, tupla, tabla y general; DOMAIN, PK, UNIQUE, NOT NULL y FK.
 
-## 4. [[MATCH SIMPLE, FULL y PARTIAL]]
+## 2. [[MATCH SIMPLE, FULL y PARTIAL|Integridad referencial y matching]]
 
-## 5. [[CHECK y lógica de tres valores]]
+Acciones ON DELETE/ON UPDATE y tratamiento de nulos con MATCH SIMPLE, FULL y PARTIAL.
 
-## 6. [[Restricciones con conteos y ASSERTION]]
+## 3. [[CHECK y lógica de tres valores|CHECK y ASSERTION]]
 
-## 7. [[Análisis de operaciones y restricciones]]
+Chequeos de fila, lógica de tres valores, implicaciones, conteos y aserciones del estándar.
+
+## 4. [[Análisis de operaciones y restricciones|Análisis de ejercicios y operaciones]]
+
+Método para simular operaciones, distinguir casos acumulativos y reconocer controles que requieren otros eventos.
 
 ## Checklist del práctico
 

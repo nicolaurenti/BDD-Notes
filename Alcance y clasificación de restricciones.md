@@ -3,8 +3,9 @@ tags:
   - tp3
 ---
 
-# Alcance y clasificación de restricciones
+# Fundamentos y clasificación de restricciones
 
+## Alcance y clasificación de restricciones
 
 Una restricción expresa qué estados de la base son válidos. No alcanza con controlar la aplicación: el motor debe rechazar las operaciones que dejan datos inconsistentes.
 
@@ -17,11 +18,11 @@ Una restricción expresa qué estados de la base son válidos. No alcanza con co
 
 La clasificación depende del modelo: identificar primero dónde están los atributos y qué filas hay que consultar. Un `CHECK` escrito al final del `CREATE TABLE` no se vuelve, por esa ubicación, un control de múltiples filas.
 
-## 1. Restricción de atributo o dominio
+### 1. Restricción de atributo o dominio
 
 Controla un único valor, sin consultar otras filas.
 
-### CHECK sobre una columna
+#### CHECK sobre una columna
 
 ```sql
 CREATE TABLE articulo_ejemplo (
@@ -37,7 +38,7 @@ CREATE TABLE articulo_ejemplo (
 
 El CHECK limita qué valores se admiten; NOT NULL obliga a informar uno. Sin NOT NULL, el nulo no sería rechazado por este CHECK.
 
-### DOMAIN para reutilizar la regla
+#### DOMAIN para reutilizar la regla
 
 Un dominio es un tipo de dato con restricciones que se puede usar en distintas columnas.
 
@@ -53,7 +54,7 @@ CREATE TABLE autor_ejemplo (
 
 `VALUE` representa el valor que se está comprobando. Cualquier columna de este dominio reutiliza su lista de nacionalidades. Ambos ejemplos son compatibles con PostgreSQL.
 
-## 2. Restricción de tupla
+### 2. Restricción de tupla
 
 Compara atributos de **una misma fila**. No necesita leer otras filas de la tabla.
 
@@ -85,11 +86,11 @@ Una puede ser nula, pero al menos una debe estar informada. Tener ambas informad
 
 Aunque el CHECK se escriba después de todas las columnas, sigue siendo **de tupla**, porque solo consulta valores de la fila evaluada.
 
-## 3. Restricción de tabla
+### 3. Restricción de tabla
 
 Para decidir si una fila es válida, se consideran **otras filas de la misma tabla**.
 
-### Unicidad con UNIQUE — PostgreSQL
+#### Unicidad con UNIQUE — PostgreSQL
 
 ```sql
 CREATE TABLE usuario_ejemplo (
@@ -104,7 +105,7 @@ CREATE TABLE usuario_ejemplo (
 
 La regla no compara dos atributos de una fila: necesita garantizar que no haya **otra fila** con ese email. UNIQUE es el recurso declarativo específico para esta regla.
 
-### Límite de filas por grupo — ejemplo del práctico
+#### Límite de filas por grupo — ejemplo del práctico
 
 «Cada artículo puede tener como máximo 15 palabras clave». Suponiendo que cada fila de `contiene` representa una asociación única entre artículo y palabra:
 
@@ -131,7 +132,7 @@ El alcance es de tabla porque el control consulta solo `contiene`, aunque use un
 
 En PostgreSQL, este límite agregado no puede escribirse como CHECK con subconsulta: requiere una implementación procedural que contemple los eventos relevantes y el acceso concurrente. En cambio, la unicidad del ejemplo anterior sí se implementa directamente con UNIQUE.
 
-## 4. Restricción general
+### 4. Restricción general
 
 Relaciona datos de **varias tablas**.
 
@@ -168,7 +169,7 @@ Este ejemplo supone que horas y límites no admiten NULL y que una FK garantiza 
 
 En PostgreSQL se implementa este control general mediante triggers sobre los eventos relevantes de ambas tablas; un CHECK local sobre voluntario no alcanza.
 
-## Cómo elegir el alcance
+### Cómo elegir el alcance
 
 1. ¿La regla se decide mirando un solo atributo? **Atributo o dominio.**
 2. ¿Necesito varios atributos, pero solo de la misma fila? **Tupla.**
@@ -179,3 +180,22 @@ Primero determinar el alcance; después elegir el recurso que lo expresa. El nom
 
 Los fragmentos son ejemplos de estudio: no se ejecutaron ni se crearon restricciones en las bases existentes.
 
+## PK, UNIQUE, NOT NULL y FK
+
+- `PRIMARY KEY`: identifica la fila; incluye unicidad y ausencia de nulos.
+- `UNIQUE`: impide combinaciones repetidas; en PostgreSQL admite por defecto varios nulos.
+- `NOT NULL`: obliga a informar el atributo.
+- `FOREIGN KEY`: exige una referencia válida, salvo los casos de nulidad permitidos por el matching.
+
+Una FK compuesta comprueba la **combinación completa**. Dos FK separadas no expresan lo mismo.
+
+```sql
+ALTER TABLE trabaja_en
+ADD CONSTRAINT fk_trabaja_empleado
+FOREIGN KEY (tipo_e, nro_e)
+REFERENCES empleado (tipo_e, nro_e)
+ON DELETE CASCADE
+ON UPDATE RESTRICT;
+```
+
+Los nombres de columnas del ejemplo son ilustrativos; en los ejercicios 1 y 2 se deben tomar los nombres y flechas del diagrama del enunciado.
