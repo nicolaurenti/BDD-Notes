@@ -25,113 +25,11 @@ Se declaran en la tabla que contiene la FK, pero se activan al modificar o borra
 - Cambiar directamente una FK en la tabla hija exige que el nuevo padre exista; `ON UPDATE CASCADE` no crea padres.
 - Borrar una fila hija no borra automáticamente su padre.
 
-## Agregar restricciones de integridad referencial con ALTER TABLE
+## Declarar una referencia
 
-Cuando las tablas ya existen, se pueden incorporar claves foráneas mediante `ALTER TABLE ... ADD CONSTRAINT`. Los siguientes ejemplos usan una biblioteca: `libro`, `ejemplar` y `prestamo`.
+La FK se incorpora en la hija y referencia una clave completa del padre. Las acciones ON DELETE y ON UPDATE se eligen según la regla del modelo.
 
-### Identificar la tabla que contiene la referencia
-
-La **tabla hija** contiene la FK; la **tabla padre** contiene la clave referenciada. La sentencia se escribe sobre la hija.
-
-| Relación del ejemplo | Tabla hija y FK | Tabla padre y clave referenciada |
-|---|---|---|
-| Cada ejemplar pertenece a un libro | `ejemplar (isbn)` | `libro (isbn)` |
-| Cada préstamo corresponde a un ejemplar | `prestamo (isbn, nro_ejemplar)` | `ejemplar (isbn, nro_ejemplar)` |
-
-Se supone que `libro` tiene PK `(isbn)` y `ejemplar` tiene PK `(isbn, nro_ejemplar)`. Una FK también puede referenciar una clave declarada `UNIQUE` apropiada.
-
-### Plantilla de la sentencia
-
-```sql
--- Plantilla: sustituir los marcadores por nombres y acciones concretos.
-ALTER TABLE tabla_hija
-ADD CONSTRAINT nombre_de_la_restriccion
-FOREIGN KEY (columna_fk_1, columna_fk_2)
-REFERENCES tabla_padre (columna_clave_1, columna_clave_2)
-ON DELETE accion_de_baja
-ON UPDATE accion_de_modificacion;
-```
-
-`ADD CONSTRAINT` agrega una regla con nombre. Las columnas deben existir y los datos ya almacenados deben cumplir la nueva restricción. Para una FK simple se indica una sola columna en cada lista.
-
-### Ejemplo de FK simple
-
-Regla elegida: impedir borrar un libro si tiene ejemplares y propagar los cambios de su ISBN a esos ejemplares.
-
-```sql
-ALTER TABLE ejemplar
-ADD CONSTRAINT fk_ejemplar_libro
-FOREIGN KEY (isbn)
-REFERENCES libro (isbn)
-ON DELETE RESTRICT
-ON UPDATE CASCADE;
-```
-
-- `ALTER TABLE ejemplar`: modifica la tabla hija.
-- `FOREIGN KEY (isbn)`: identifica la columna que contiene la referencia.
-- `REFERENCES libro (isbn)`: indica dónde debe existir el ISBN.
-- `ON DELETE RESTRICT`: impide borrar un libro mientras tenga ejemplares que lo referencien.
-- `ON UPDATE CASCADE`: si cambia el ISBN del libro, actualiza ese valor en sus ejemplares.
-
-Si existe el libro con ISBN `'978-001'`, un ejemplar puede referenciarlo. Una referencia a `'978-999'` se rechaza si ese libro no existe.
-
-### Ejemplo de FK compuesta
-
-Un ejemplar se identifica por la **combinación** de ISBN y número de ejemplar. El número por sí solo puede repetirse para libros diferentes.
-
-Regla elegida: impedir borrar o cambiar la clave de un ejemplar mientras tenga préstamos que lo referencien.
-
-```sql
-ALTER TABLE prestamo
-ADD CONSTRAINT fk_prestamo_ejemplar
-FOREIGN KEY (isbn, nro_ejemplar)
-REFERENCES ejemplar (isbn, nro_ejemplar)
-ON DELETE RESTRICT
-ON UPDATE RESTRICT;
-```
-
-Las columnas se emparejan por posición: `isbn` con `isbn`, y `nro_ejemplar` con `nro_ejemplar`. Los nombres podrían ser diferentes en cada tabla; deben corresponderse sus tipos y su significado.
-
-Si los únicos ejemplares son `('978-001', 1)` y `('978-002', 2)`:
-
-| Referencia del préstamo | Resultado de la FK |
-|---|---|
-| `('978-001', 1)` | Válida: existe esa combinación. |
-| `('978-001', 2)` | Inválida: los valores aparecen por separado, pero no juntos en un ejemplar. |
-
-Dos FK independientes no reemplazan una FK compuesta: no comprobarían que los valores pertenezcan a la misma fila padre, y necesitarían claves referenciables individuales.
-
-### Elegir las acciones según la regla
-
-Las acciones anteriores son decisiones de los ejemplos. En otro modelo podrían corresponder otras acciones:
-
-```sql
--- Fragmentos alternativos para la declaración de una FK:
-ON DELETE CASCADE
-ON UPDATE RESTRICT
-```
-
-`CASCADE` al borrar elimina las filas hijas que referencian al padre. Con `SET NULL`, en cambio, se conservan esas filas y se ponen en NULL las columnas de la FK; esas columnas deben admitir nulos.
-
-Cuando una consigna usa un par **[baja, modificación a derecha]**, el primer componente corresponde a `ON DELETE` y el segundo a `ON UPDATE`. La modificación a derecha se refiere al cambio de la clave referenciada en la tabla padre.
-
-| Símbolo | Acción SQL |
-|---|---|
-| `R` | `RESTRICT` |
-| `C` | `CASCADE` |
-| `N` | `SET NULL` |
-
-Las acciones se evalúan junto con las demás restricciones: una cascada puede quedar impedida por otra regla. Si se omite `MATCH`, PostgreSQL usa `MATCH SIMPLE`.
-
-### Errores frecuentes
-
-- Alterar la tabla padre en lugar de la hija.
-- Invertir las acciones de baja y modificación.
-- Usar solo una parte de una clave compuesta o cambiar el orden de correspondencia.
-- Confundir la PK completa de la hija con las columnas que necesita una FK concreta.
-- Creer que `ON UPDATE CASCADE` permite asignar directamente a una hija una FK cuyo padre no existe.
-
-Los ejemplos usan la forma ALTER TABLE del práctico; no se ejecutaron sobre las bases existentes.
+[[TP3 - Declaración de FK con ALTER TABLE|Declaración de FK con ALTER TABLE]]
 
 ## MATCH SIMPLE, FULL y PARTIAL
 
@@ -143,66 +41,23 @@ Controlan los nulos de una **FK compuesta**.
 | **FULL**    | Todos NULL o pareja exacta sin nulos. Rechaza nulos parciales.                         |
 | **PARTIAL** | Los valores informados deben coincidir en una misma fila padre. Todos NULL se admiten. |
 
-### Cómo se declara
+### Declaración y casos de matching
 
-```sql
-CREATE TABLE cliente (
-    zona CHAR(1),
-    nro_cliente INTEGER,
-    PRIMARY KEY (zona, nro_cliente)
-);
+La declaración y la tabla de casos muestran qué se acepta cuando falta uno o ambos componentes de una FK compuesta.
 
-INSERT INTO cliente VALUES ('A', 1);
+[[TP3 - Casos de MATCH SIMPLE, FULL y PARTIAL|Casos de MATCH SIMPLE, FULL y PARTIAL]]
 
-CREATE TABLE pedido (
-    id_pedido INTEGER PRIMARY KEY,
-    zona CHAR(1),
-    nro_cliente INTEGER,
-    FOREIGN KEY (zona, nro_cliente)
-        REFERENCES cliente (zona, nro_cliente)
-        MATCH SIMPLE
-);
-```
+## Seguir una cadena de acciones
 
-Para elegir otra modalidad, reemplazar `MATCH SIMPLE` por `MATCH FULL` o, en SQL estándar, `MATCH PARTIAL`. Las columnas de la FK admiten nulos en este ejemplo.
+Las acciones se propagan desde una modificación del padre hacia las referencias hijas. Una modificación directa de la hija no crea padres ni dispara una cascada hacia arriba.
 
-### Qué acepta cada uno
-
-La única fila de `cliente` es **`('A', 1)`**:
-
-| FK que se intenta insertar en pedido | SIMPLE | FULL | PARTIAL |
-|---|:---:|:---:|:---:|
-| `('A', 1)` | Sí | Sí | Sí |
-| `('A', 9)` | No | No | No |
-| `('A', NULL)` | Sí | No | Sí: coincide A |
-| `(NULL, 1)` | Sí | No | Sí: coincide 1 |
-| `('Z', NULL)` | Sí | No | No: no existe zona Z |
-| `(NULL, NULL)` | Sí | Sí | Sí |
-
-Ejemplo concreto:
-
-```sql
-INSERT INTO pedido VALUES (10, 'Z', NULL);
--- SIMPLE: acepta por tener un NULL.
--- FULL: rechaza porque solo una parte es NULL.
--- PARTIAL: rechazaría porque ninguna fila padre tiene zona Z.
-```
-
-**PostgreSQL:** SIMPLE es el valor por defecto; FULL está soportado; PARTIAL no está implementado.
-
-## Seguir las acciones en la dirección correcta
-
-Supongamos un libro L1 con ejemplares `(L1, 1)` y `(L1, 2)`. Si EJEMPLAR referencia LIBRO con ON DELETE CASCADE, borrar L1 solicita eliminar ambos ejemplares. Borrar solamente el ejemplar `(L1, 1)` no elimina el libro: la acción declarada se propaga desde la clave padre hacia sus referencias hijas.
-
-Con ON UPDATE CASCADE, cambiar la clave del libro L1 a L9 transforma las referencias de sus ejemplares en `(L9, 1)` y `(L9, 2)`. En cambio, `UPDATE ejemplar SET isbn = 'L9' ...` es una modificación directa de la hija: necesita que exista L9 en LIBRO. No invoca una cascada para crear ese libro.
-
-Si PRESTAMO referencia EJEMPLAR con RESTRICT, un préstamo puede impedir que se complete la eliminación en cascada que comenzó en LIBRO. Se revisa toda la cadena, no solo la primera FK. Si se rechaza la sentencia, no queda borrado el libro con sus ejemplares a medias.
+[[TP3 - Ejemplo de cascadas y dirección de las acciones|Ejemplo de cascadas y dirección de las acciones]]
 
 ## Justificar el matching como búsqueda de una fila
 
-En PARTIAL, para `('A', NULL)` se busca alguna fila padre cuyo primer componente sea A; el segundo queda sin exigir. Para `('A', 3)` se busca exactamente esa pareja. No se acepta porque A aparezca en una fila y 3 en otra. FULL añade la exigencia de que no haya un nulo parcial, y SIMPLE deja de exigir coincidencia cuando alguno de los componentes es NULL.
+Para justificar un caso se busca una misma fila padre que cumpla los componentes exigidos por la modalidad. Después se comprueban las demás restricciones de la sentencia.
 
-El matching decide sobre esa FK. Para aceptar toda una inserción también se revisan las restantes FK, PK, UNIQUE y NOT NULL. Superar el matching de una referencia no garantiza que la sentencia completa sea admisible.
+[[TP3 - Casos de MATCH SIMPLE, FULL y PARTIAL|Casos de MATCH SIMPLE, FULL y PARTIAL]]
 
 ## Fuente de estudio
 

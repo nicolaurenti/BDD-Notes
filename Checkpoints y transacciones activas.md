@@ -23,15 +23,9 @@ La estrategia puede quitar alguna necesidad: en diferida no se hace UNDO de dato
 
 ## Ejemplo temporal
 
-```text
-T1: START -- escritura -- |CHECKPOINT| -- COMMIT -- |FALLA|
-T2: START -- COMMIT ----- |CHECKPOINT| ------------ |FALLA|
-T3:                      |CHECKPOINT| -- START --- |FALLA|
-```
+El gráfico separa las transacciones que confirmaron antes del control, después de él y las que quedaron activas en la falla.
 
-T2 quedó asegurada por el checkpoint. T1 confirma después y se considera para REDO en UNDO/REDO, incluyendo las escrituras suyas que no quedaron aseguradas por el control. T3 no confirma y se considera para UNDO si pudo escribir páginas.
-
-Para dibujar el gráfico, marcar START y COMMIT de cada transacción sobre una línea de tiempo común, y luego las dos verticales de checkpoint y falla. Una línea abierta en la falla no se transforma en confirmada porque haya comenzado hace mucho.
+[[TP8 - Ejemplo temporal de checkpoint y falla|Ejemplo temporal de checkpoint y falla]]
 
 ## Fuente de estudio
 

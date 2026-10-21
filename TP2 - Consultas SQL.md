@@ -71,7 +71,7 @@ Recopilación de las resoluciones compartidas, conservando las consultas y anota
 - [ ] Explicar el orden lógico de una consulta.
 ## Repaso del ejercicio 2.1 — Valores nulos
 
-Resultados y errores frecuentes en [[Valores NULL y lógica de tres valores#Ejercicio 2.1: cuatro equipos con puntos y descripción nulos]]. Para el apartado b, ver [[Funciones de agregación#COALESCE: reemplazar el resultado o los datos de entrada|Agregaciones — COALESCE]].
+Resultados y errores frecuentes en [[Valores NULL y lógica de tres valores|el bloque de valores NULL]]. Para el apartado b, ver [[Funciones de agregación|el bloque de agregaciones]].
 
 ## Criterio de estudio y fuentes
 

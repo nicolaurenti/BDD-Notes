@@ -28,13 +28,11 @@ Con chequeo, INSERT y UPDATE sobre esa vista deben dejar las filas visibles seg�
 
 Solo se actualizan filas actualmente visibles. Si un INSERT de 300 quedó oculto, un UPDATE posterior sobre la vista no lo encuentra, aunque filtre por su proveedor. WCO no impide escrituras directas sobre la tabla base que dejen filas fuera de la vista.
 
-## Diferenciar selección y comprobación posterior
+## Seguir una modificación
 
-Supongamos ENVIO con `(P1, A1, 700)` y `(P2, A2, 300)`. ENVIOS500 ve solo la primera. Un UPDATE sobre ENVIOS500 que busque P2 no encuentra la segunda fila, aunque proponga llevarla a 1000: el WHERE de la vista decide qué filas se pueden seleccionar antes de aplicar SET.
+La vista determina primero qué filas se seleccionan. WCO comprueba después que el resultado propuesto siga satisfaciendo los filtros exigidos.
 
-Si el UPDATE selecciona P1 y propone 100, sin WCO modifica la base y la fila deja de aparecer. Con WCO, se comprueba el resultado propuesto y se rechaza la sentencia porque 100 no satisface `cantidad >= 500`.
-
-La «migración» no es un traslado a otra tabla: es dejar de pertenecer al resultado de la vista. La fila puede seguir existiendo en ENVIO. Para explicar el ejercicio, mostrar por separado el estado base y las filas visibles.
+[[TP5 - Ejemplo de selección y migración de filas|Ejemplo de selección y migración de filas]]
 
 ## Qué no hace el chequeo
 

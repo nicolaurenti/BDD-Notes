@@ -18,142 +18,47 @@ tags:
 
 Cuando un outer join no encuentra coincidencia, completa las columnas del lado faltante con `NULL`.
 
-#### INNER JOIN
+### INNER y LEFT con instituciones
 
-```sql
-SELECT i.nombre_institucion, v.nombre, v.apellido
-FROM institucion i
-JOIN voluntario v
-    ON v.id_institucion = i.id_institucion;
-```
+INNER conserva coincidencias; LEFT conserva además las filas izquierdas sin pareja, completando el otro lado con NULL.
 
-Solo aparecen instituciones con voluntarios relacionados.
+[[TP2 - Ejemplos básicos de INNER JOIN, LEFT JOIN y USING|Ejemplos básicos de INNER JOIN, LEFT JOIN y USING]]
 
-#### LEFT JOIN
+### Filtros en un LEFT JOIN
 
-```sql
-SELECT i.nombre_institucion, v.nombre, v.apellido
-FROM institucion i
-LEFT JOIN voluntario v
-    ON v.id_institucion = i.id_institucion;
-```
+ON decide qué coincidencias se forman. WHERE filtra después de la unión y puede quitar las filas extendidas con NULL que se querían conservar.
 
-También aparecen las instituciones sin voluntarios.
+[[TP2 - LEFT JOIN con filtros en ON y WHERE|LEFT JOIN con filtros en ON y WHERE]]
 
-#### Diferencia entre ON y WHERE
+### Relacionar una tabla consigo misma
 
-Para conservar todas las instituciones y mostrar solamente sus voluntarios con más de 1000 horas:
+Un autojoin usa alias distintos para representar roles diferentes de una misma tabla, como voluntario y coordinador.
 
-```sql
-SELECT i.id_institucion, v.nro_voluntario
-FROM institucion i
-LEFT JOIN voluntario v
-    ON v.id_institucion = i.id_institucion
-   AND v.horas_aportadas > 1000;
-```
+[[TP2 - Autojoins, coordinadores y parejas de filas|Autojoins, coordinadores y parejas de filas]]
 
-Si esa condición se coloca en `WHERE`, desaparecen las filas sin una coincidencia que la cumpla:
+### USING y nombres comunes
 
-```sql
-SELECT i.id_institucion, v.nro_voluntario
-FROM institucion i
-LEFT JOIN voluntario v
-    ON v.id_institucion = i.id_institucion
-WHERE v.horas_aportadas > 1000;
-```
+USING permite indicar la columna común cuando tiene el mismo nombre. NATURAL JOIN usa todas las columnas con nombres coincidentes, por lo que debe revisarse cuidadosamente.
 
-#### Autojoin
+[[TP2 - Ejemplos básicos de INNER JOIN, LEFT JOIN y USING|Ejemplos básicos de INNER JOIN, LEFT JOIN y USING]]
 
-Permite relacionar una tabla consigo misma utilizando alias diferentes:
+### Cantidad de parejas de un autojoin
 
-```sql
-SELECT
-    v.nombre,
-    v.apellido,
-    c.nombre AS nombre_coordinador,
-    c.apellido AS apellido_coordinador
-FROM voluntario v
-LEFT JOIN voluntario c
-    ON c.nro_voluntario = v.id_coordinador;
-```
+El join produce todas las parejas que satisfacen ON, incluso la pareja de una fila consigo misma si no se excluye.
 
-#### JOIN USING
+[[TP2 - Autojoins, coordinadores y parejas de filas|Autojoins, coordinadores y parejas de filas]]
 
-Cuando las columnas de unión tienen el mismo nombre:
+## Contar filas relacionadas
 
-```sql
-FROM voluntario v
-JOIN institucion i USING (id_institucion)
-```
+Para contar entidades después de unir, identificar qué representa cada fila. En LEFT JOIN se cuenta la PK del lado opcional para obtener cero cuando no hay coincidencias.
 
-> [!warning]
-> `NATURAL JOIN` utiliza todas las columnas con nombres coincidentes. Si cambia la estructura de las tablas, puede cambiar también el significado del join.
+[[TP2 - Conteos de entidades relacionadas y ausentes|Conteos de entidades relacionadas y ausentes]]
 
-#### Autojoin: todas las coincidencias y efecto de NULL
+## Resultado trabajado de LEFT JOIN
 
-```sql
-SELECT e1.id AS id_1, e2.id AS id_2
-FROM equipo e1
-JOIN equipo e2 ON e1.puntos = e2.puntos;
-```
+El desarrollo muestra las filas concretas antes y después de filtrar, y por qué COUNT(*) difiere de contar la PK opcional.
 
-- Con cuatro equipos cuyos puntos son `NULL`, devuelve **0 filas**: `NULL = NULL` es `UNKNOWN` y no forma una coincidencia.
-- Con cuatro equipos cuyos puntos son todos `5`, devuelve **16 filas**: cada fila coincide con las cuatro, incluida ella misma. Aparecen tanto `(1, 2)` como `(2, 1)`.
-
-El join no elige una única coincidencia por fila: devuelve **todas las parejas que satisfacen el ON**. Los alias representan dos usos de la misma tabla.
-
-Los nulos y los conteos del join se explican en esta nota y en el bloque de NULL del TP2.
-
-
-### Conteos de joins
-
-#### Conservar entidades sin relacionados
-
-Cantidad de voluntarios de cada institución, incluyendo las que tienen cero:
-
-```sql
-SELECT
-    i.id_institucion,
-    COUNT(v.nro_voluntario) AS cantidad
-FROM institucion i
-LEFT JOIN voluntario v
-    ON v.id_institucion = i.id_institucion
-GROUP BY i.id_institucion;
-```
-
-Se cuenta la PK del voluntario:
-
-- Sin voluntarios, `COUNT(v.nro_voluntario)` devuelve `0`.
-- Con `COUNT(*)`, se contaría la fila extendida con nulos y devolvería `1`.
-
-#### Evitar multiplicaciones
-
-Unir un voluntario con varias filas históricas genera varias filas para ese voluntario.
-
-Si se quieren contar personas diferentes:
-
-```sql
-COUNT(DISTINCT v.nro_voluntario)
-```
-
-> [!important]
-> Antes de agregar, identificar qué representa cada fila del resultado del join: una persona, una tarea, una entrega o una combinación.
-
-## Una tabla pequeña para seguir el LEFT JOIN
-
-Sean instituciones 20 y 50, y dos voluntarios de 20: `(1, 500 horas)` y `(2, 2000 horas)`. El LEFT JOIN sin otros filtros produce:
-
-| Institución | Voluntario | Horas |
-|---|---|---:|
-| 20 | 1 | 500 |
-| 20 | 2 | 2000 |
-| 50 | NULL | NULL |
-
-Si `horas > 1000` está en ON, las coincidencias se buscan con ese requisito: salen `(20, 2, 2000)` y `(50, NULL, NULL)`. Si está en WHERE, se filtra después de unir: de la tabla anterior solo queda `(20, 2, 2000)`, porque NULL > 1000 no es TRUE.
-
-Al agrupar el join original por la clave de la institución, COUNT(*) produce 2 para 20 y 1 para 50. COUNT de la PK del voluntario produce 2 y 0. La diferencia proviene de la fila que LEFT JOIN conserva para representar la institución sin coincidencias.
-
-En las uniones por departamento de Películas, usar `(id_distribuidor, id_departamento)`. Igualar solo id_departamento puede unir departamentos diferentes que comparten número y multiplicar filas sin que corresponda al modelo.
+[[TP2 - LEFT JOIN con filtros en ON y WHERE|LEFT JOIN con filtros en ON y WHERE]]
 
 ## Fuente de estudio
 

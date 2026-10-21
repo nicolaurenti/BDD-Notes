@@ -26,15 +26,9 @@ Para dejar acceso solo a ciertas columnas, retirar la concesión amplia correspo
 
 ## Comparar tres revocaciones sobre la misma cadena
 
-Partiendo de `A → B con SELECT y WGO → C con SELECT`, sin otros caminos:
+RESTRICT rechaza dependencias que quedarían sin fundamento. CASCADE retira concesiones dependientes. GRANT OPTION FOR puede quitar delegación conservando el permiso de uso.
 
-| Revocación de A a B | B después | C después |
-|---|---|---|
-| SELECT con RESTRICT | Se rechaza por la concesión dependiente; conserva lo anterior | Conserva lo anterior |
-| SELECT con CASCADE | Pierde SELECT y su delegación | Pierde el SELECT dependiente |
-| GRANT OPTION FOR SELECT con CASCADE | Conserva SELECT, pierde la delegación | Pierde el SELECT dependiente |
-
-En el primer caso no se retira primero el permiso y se deja a C «colgado»: se rechaza la operación que produciría esa dependencia inválida. En CASCADE se siguen solo los caminos afectados; una concesión independiente puede mantener el acceso.
+[[TP6 - Ejemplo comparado de RESTRICT, CASCADE y GRANT OPTION FOR|Ejemplo comparado de RESTRICT, CASCADE y GRANT OPTION FOR]]
 
 ## Tabla y columna no son permisos negativos
 

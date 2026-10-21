@@ -42,34 +42,9 @@ El `_` sin escape significa «cualquier carácter»: `S_%` también admitiría S
 
 ## Restricciones con conteos y ASSERTION
 
-Patrón: **no debe existir un caso infractor**.
+Para prohibir infracciones se escribe una consulta que las detecte y se exige NOT EXISTS. El alcance depende de las filas consultadas, no solo del nombre CHECK o ASSERTION.
 
-```sql
--- SQL estándar del ejercicio; PostgreSQL no admite CREATE ASSERTION.
-CREATE ASSERTION max_15_palabras
-CHECK (NOT EXISTS (
-    SELECT id_articulo
-    FROM contiene
-    GROUP BY id_articulo
-    HAVING COUNT(*) > 15
-));
-```
-
-Se supone una fila de `contiene` por palabra clave asociada. Si el modelo permite repeticiones, definir qué se cuenta y usar la clave completa correspondiente.
-
-Para las horas dentro de la tarea, el caso infractor es:
-
-```sql
-SELECT v.nro_voluntario
-FROM voluntario v
-JOIN tarea t ON t.id_tarea = v.id_tarea
-WHERE v.horas_aportadas < t.min_horas
-   OR v.horas_aportadas > t.max_horas;
-```
-
-La aserción exige que esa consulta esté vacía. Si los nulos están prohibidos, controlarlos además: las comparaciones ordinarias no detectan un nulo como infracción.
-
-En el apartado PostgreSQL, no escribir subconsultas dentro de CHECK ni CREATE ASSERTION como si fueran recursos disponibles. Si FK o UNIQUE expresan la regla, usarlos; de lo contrario, indicar que no se puede implementar con los recursos declarativos vistos en este práctico.
+[[TP3 - Ejemplos de conteos con CHECK de tabla y ASSERTION|Ejemplos de conteos con CHECK de tabla y ASSERTION]]
 
 ## Construir una implicación sin exigir demasiado
 
@@ -77,25 +52,11 @@ En el apartado PostgreSQL, no escribir subconsultas dentro de CHECK ni CREATE AS
 
 En `NOT A OR B`, A es «publicado después de 2020» y B es «argentino». Para un artículo de 2019, NOT A es verdadero y el control se satisface sea cual sea su nacionalidad. Para uno de 2022, NOT A es falso y se necesita B. Con nacionalidad NULL, B da UNKNOWN: el CHECK no lo rechaza salvo que se exija información con NOT NULL u otra condición explícita.
 
-## CHECK de tabla según SQL-1999
+## CHECK agregado según SQL-1999
 
-La cátedra permite plantear una subconsulta en un CHECK de tabla cuando el control necesita varias filas de esa tabla. Por ejemplo, para el límite de asociaciones:
+El ejemplo de CHECK de tabla permite contrastar el planteo del estándar con su falta de soporte para subconsultas en PostgreSQL.
 
-```sql
--- Planteo declarativo SQL-1999; no es ejecutable en PostgreSQL.
-ALTER TABLE contiene
-ADD CONSTRAINT ck_max_palabras
-CHECK (NOT EXISTS (
-    SELECT id_articulo
-    FROM contiene
-    GROUP BY id_articulo
-    HAVING COUNT(*) > 15
-));
-```
-
-La consulta devuelve artículos infractores. Con 15 asociaciones no devuelve ese artículo; con 16, sí. NOT EXISTS invierte esa existencia para expresar la condición válida. La misma condición puede escribirse como ASSERTION, pero para clasificarla sigue siendo de tabla porque solo consulta CONTIENE.
-
-Para «solo se pueden publicar artículos argentinos con hasta diez palabras», separar las posibles lecturas: exigir nacionalidad argentina a todos los artículos y, además, el máximo diez no es lo mismo que imponer el máximo únicamente cuando el artículo es argentino. Declarar la interpretación elegida antes de construir la negación de los infractores.
+[[TP3 - Ejemplos de conteos con CHECK de tabla y ASSERTION|Ejemplos de conteos con CHECK de tabla y ASSERTION]]
 
 ## Fuente de estudio
 

@@ -17,7 +17,7 @@ Alcance de atributo, tupla, tabla y general; DOMAIN, PK, UNIQUE, NOT NULL y FK.
 
 Acciones ON DELETE/ON UPDATE y tratamiento de nulos con MATCH SIMPLE, FULL y PARTIAL.
 
-[[MATCH SIMPLE, FULL y PARTIAL#Agregar restricciones de integridad referencial con ALTER TABLE|Ejemplos de ALTER TABLE para agregar FK simples y compuestas]], con identificación de tabla hija y padre y elección de acciones referenciales.
+[[MATCH SIMPLE, FULL y PARTIAL|Ejemplos de ALTER TABLE dentro de integridad referencial]], con identificación de tabla hija y padre y elección de acciones referenciales.
 
 ## 3. [[CHECK y lógica de tres valores|CHECK y ASSERTION]]
 

@@ -12,3 +12,6 @@
 - Desarrollar definiciones, razonamiento y ejemplos con resultados cuando sean necesarios. Evitar tanto las listas telegráficas como el relleno. Indicar supuestos y explicar por qué funciona la solución o falla el caso inválido.
 - Diferenciar SQL-1999 de PostgreSQL cuando la consigna lo pida; no mezclar ambos como si fueran el mismo criterio. Conservar las discrepancias de las fuentes y explicarlas sin corregirlas en silencio.
 - Mantener temas relacionados agrupados, sin crear notas innecesarias. No reescribir las resoluciones personales al revisar teoría salvo pedido explícito.
+- Organizar la lectura por capas según la extensión: práctico → tema/subtema → desarrollo o ejemplo, con niveles adicionales cuando sean necesarios. La meta es evitar mucho desplazamiento dentro de una nota, no respetar un número fijo de niveles.
+- Mantener la explicación central y enlaces descriptivos en el tema padre. Separar ejemplos, simulaciones y explicaciones extensas en notas hijas; conservar ejemplos breves en la misma nota si no dificultan la lectura. No crear nodos pequeños solo para cumplir una estructura.
+- Cada nota hija se enlaza desde su padre inmediato y hereda la etiqueta tpN. Los índices de prácticos no deben saltarse capas para enlazar nietos; evitar enlaces cruzados entre ramas.
