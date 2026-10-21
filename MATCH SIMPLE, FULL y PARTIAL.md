@@ -139,10 +139,10 @@ Ejemplos de estudio: no se ejecutó SQL. Sintaxis de referencia: [ALTER TABLE](h
 
 Controlan los nulos de una **FK compuesta**.
 
-| Modalidad | Regla |
-|---|---|
-| **SIMPLE** | Si hay algún NULL, no busca coincidencia. Sin nulos, exige la pareja exacta. |
-| **FULL** | Todos NULL o pareja exacta sin nulos. Rechaza nulos parciales. |
+| Modalidad   | Regla                                                                                  |
+| ----------- | -------------------------------------------------------------------------------------- |
+| **SIMPLE**  | Si hay algún NULL, no busca coincidencia. Sin nulos, exige la pareja exacta.           |
+| **FULL**    | Todos NULL o pareja exacta sin nulos. Rechaza nulos parciales.                         |
 | **PARTIAL** | Los valores informados deben coincidir en una misma fila padre. Todos NULL se admiten. |
 
 ### Cómo se declara
