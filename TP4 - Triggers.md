@@ -23,6 +23,10 @@ tags:
 
 ## 9. [[Comprobación de triggers]]
 
+## Resolución
+
+[[Resolución del TP4 - Triggers]]
+
 ## Checklist del práctico
 
 - [ ] Elegir momento, evento y granularidad.
