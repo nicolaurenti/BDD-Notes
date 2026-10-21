@@ -31,4 +31,20 @@ No trasladar esas reglas sin más al motor: en PostgreSQL una vista simple puede
 | UNION, INTERSECT o EXCEPT en el nivel principal | No se actualiza automáticamente |
 | Columna calculada | Esa columna no es automáticamente escribible; puede haber otras que sí lo sean |
 
-También hay limitaciones con LIMIT/OFFSET, ventanas y otras construcciones. Ver [condiciones de vistas actualizables en PostgreSQL](https://www.postgresql.org/docs/current/sql-createview.html#SQL-CREATEVIEW-UPDATABLE-VIEWS).
+Las filminas enumeran también LIMIT/OFFSET y otras construcciones entre las limitaciones de actualización automática en PostgreSQL.
+
+## Justificar con las reglas que pide la consigna
+
+Para el análisis **según SQL-1999 presentado por la cátedra**, comprobar en una vista simple: conservación de todas las columnas de la PK, ausencia de DISTINCT, agregados e información derivada y ausencia de subconsultas en la lista SELECT. Una subconsulta en WHERE no es lo mismo que una subconsulta que produce una columna. En vistas de ensamble se analiza, además, preservación de clave.
+
+Para el apartado **PostgreSQL**, responder por separado: una única tabla o vista actualizable en FROM, sin las construcciones que impiden actualización automática en el nivel principal. No trasladar al estándar la excepción del motor sobre proyectar la PK, ni afirmar que todos los motores admiten automáticamente una vista de join.
+
+## Una vista actualizable puede rechazar un INSERT
+
+Supongamos EMPLEADO_DIST_20 con id, nombre, apellido, sueldo y nacimiento, pero sin la columna id_distribuidor, y que esta es NOT NULL sin DEFAULT en EMPLEADO. La vista puede permitir modificar el sueldo de una fila existente, pero un INSERT no aporta el distribuidor y se rechaza por esa obligatoriedad. El filtro `id_distribuidor = 20` no asigna automáticamente 20 a una columna omitida.
+
+También puede rechazarse un INSERT porque la PK ya existe o una FK referencia un padre inexistente. La respuesta completa distingue **estructura de la vista** y **validez de la operación concreta**. «Es actualizable» contesta solo la primera parte.
+
+## Fuente de estudio
+
+Enunciado del TP5 en la carpeta `../Practicos` y filminas de cátedra `BDI_05 (Vistas).pdf` (carpeta de cursada 2023).

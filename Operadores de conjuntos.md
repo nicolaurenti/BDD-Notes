@@ -224,3 +224,7 @@ En este ejemplo INTERSECT e INTERSECT ALL coinciden. Si el 2 apareciera dos vece
 - [ ] ¿Importa cuántas veces aparece una fila? Si importa, evaluar ALL.
 - [ ] ¿Está en el orden correcto la primera entrada de EXCEPT?
 - [ ] ¿Estoy comparando las filas completas que pide el enunciado?
+
+## Fuente de estudio
+
+Enunciado del TP2 en la carpeta `../Practicos` y filminas de cátedra `BDI_02.P1 (Consultas–1).pdf; BDI_02.P2 (Consultas–2).pdf` (carpeta de cursada 2023).

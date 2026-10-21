@@ -25,8 +25,6 @@ Se declaran en la tabla que contiene la FK, pero se activan al modificar o borra
 - Cambiar directamente una FK en la tabla hija exige que el nuevo padre exista; `ON UPDATE CASCADE` no crea padres.
 - Borrar una fila hija no borra automáticamente su padre.
 
-Base técnica: [restricciones y acciones referenciales en PostgreSQL](https://www.postgresql.org/docs/current/ddl-constraints.html#DDL-CONSTRAINTS-FK).
-
 ## Agregar restricciones de integridad referencial con ALTER TABLE
 
 Cuando las tablas ya existen, se pueden incorporar claves foráneas mediante `ALTER TABLE ... ADD CONSTRAINT`. Los siguientes ejemplos usan una biblioteca: `libro`, `ejemplar` y `prestamo`.
@@ -133,7 +131,7 @@ Las acciones se evalúan junto con las demás restricciones: una cascada puede q
 - Confundir la PK completa de la hija con las columnas que necesita una FK concreta.
 - Creer que `ON UPDATE CASCADE` permite asignar directamente a una hija una FK cuyo padre no existe.
 
-Ejemplos de estudio: no se ejecutó SQL. Sintaxis de referencia: [ALTER TABLE](https://www.postgresql.org/docs/current/sql-altertable.html) y [FOREIGN KEY y acciones referenciales](https://www.postgresql.org/docs/current/ddl-constraints.html#DDL-CONSTRAINTS-FK).
+Los ejemplos usan la forma ALTER TABLE del práctico; no se ejecutaron sobre las bases existentes.
 
 ## MATCH SIMPLE, FULL y PARTIAL
 
@@ -190,4 +188,22 @@ INSERT INTO pedido VALUES (10, 'Z', NULL);
 -- PARTIAL: rechazaría porque ninguna fila padre tiene zona Z.
 ```
 
-**PostgreSQL:** SIMPLE es el valor por defecto; FULL está soportado; PARTIAL no está implementado. [Referencia](https://www.postgresql.org/docs/current/sql-createtable.html).
+**PostgreSQL:** SIMPLE es el valor por defecto; FULL está soportado; PARTIAL no está implementado.
+
+## Seguir las acciones en la dirección correcta
+
+Supongamos un libro L1 con ejemplares `(L1, 1)` y `(L1, 2)`. Si EJEMPLAR referencia LIBRO con ON DELETE CASCADE, borrar L1 solicita eliminar ambos ejemplares. Borrar solamente el ejemplar `(L1, 1)` no elimina el libro: la acción declarada se propaga desde la clave padre hacia sus referencias hijas.
+
+Con ON UPDATE CASCADE, cambiar la clave del libro L1 a L9 transforma las referencias de sus ejemplares en `(L9, 1)` y `(L9, 2)`. En cambio, `UPDATE ejemplar SET isbn = 'L9' ...` es una modificación directa de la hija: necesita que exista L9 en LIBRO. No invoca una cascada para crear ese libro.
+
+Si PRESTAMO referencia EJEMPLAR con RESTRICT, un préstamo puede impedir que se complete la eliminación en cascada que comenzó en LIBRO. Se revisa toda la cadena, no solo la primera FK. Si se rechaza la sentencia, no queda borrado el libro con sus ejemplares a medias.
+
+## Justificar el matching como búsqueda de una fila
+
+En PARTIAL, para `('A', NULL)` se busca alguna fila padre cuyo primer componente sea A; el segundo queda sin exigir. Para `('A', 3)` se busca exactamente esa pareja. No se acepta porque A aparezca en una fila y 3 en otra. FULL añade la exigencia de que no haya un nulo parcial, y SIMPLE deja de exigir coincidencia cuando alguno de los componentes es NULL.
+
+El matching decide sobre esa FK. Para aceptar toda una inserción también se revisan las restantes FK, PK, UNIQUE y NOT NULL. Superar el matching de una referencia no garantiza que la sentencia completa sea admisible.
+
+## Fuente de estudio
+
+Enunciado del TP3 en la carpeta `../Practicos` y filminas de cátedra `BDI_03.P1 (Restricciones-1).pdf; BDI_03.P1 (Restricciones-2).pdf` (carpeta de cursada 2023).

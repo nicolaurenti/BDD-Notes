@@ -13,8 +13,8 @@ Una restricción expresa qué estados de la base son válidos. No alcanza con co
 |---|---|---|---|
 | Atributo o dominio | Un valor | Nacionalidad dentro de una lista | `CHECK`, `DOMAIN`, `NOT NULL` |
 | Tupla | Columnas de la misma fila | Descripción y presentación no ambas nulas | `CHECK` de fila |
-| Tabla | Varias filas de una tabla | Hasta 15 palabras por artículo en `contiene` | Chequeo de tabla en el modelo estándar; trigger si requiere agregación en PostgreSQL |
-| General | Datos de varias tablas | Horas del voluntario dentro de los límites de su tarea | `ASSERTION` en el estándar; alternativa procedural en PostgreSQL |
+| Tabla | Varias filas de una tabla | Hasta 15 palabras por artículo en `contiene` | CHECK de tabla en SQL-1999; no implementable con subconsulta en PostgreSQL |
+| General | Datos de varias tablas | Horas del voluntario dentro de los límites de su tarea | `ASSERTION` en SQL-1999; no disponible en PostgreSQL |
 
 La clasificación depende del modelo: identificar primero dónde están los atributos y qué filas hay que consultar. Un `CHECK` escrito al final del `CREATE TABLE` no se vuelve, por esa ubicación, un control de múltiples filas.
 
@@ -130,7 +130,7 @@ Lectura: **no debe existir un artículo con más de 15 filas en contiene**.
 
 El alcance es de tabla porque el control consulta solo `contiene`, aunque use una aserción como recurso declarativo del estándar. No hace falta consultar `articulo` para verificar este máximo.
 
-En PostgreSQL, este límite agregado no puede escribirse como CHECK con subconsulta: requiere una implementación procedural que contemple los eventos relevantes y el acceso concurrente. En cambio, la unicidad del ejemplo anterior sí se implementa directamente con UNIQUE.
+En PostgreSQL, este límite agregado no puede escribirse como CHECK con subconsulta. En el TP3 corresponde señalar que no puede implementarse con los recursos declarativos conocidos. En cambio, la unicidad del ejemplo anterior sí se implementa directamente con UNIQUE.
 
 ### 4. Restricción general
 
@@ -167,7 +167,7 @@ Este ejemplo supone que horas y límites no admiten NULL y que una FK garantiza 
 
 **También hay que controlar cambios en tarea:** si un voluntario aporta 350 horas y se baja el máximo de su tarea a 300, la base quedaría inválida aunque no se modifique la fila del voluntario.
 
-En PostgreSQL se implementa este control general mediante triggers sobre los eventos relevantes de ambas tablas; un CHECK local sobre voluntario no alcanza.
+Un CHECK local sobre voluntario no alcanza: los límites están en otra tabla. En el apartado de implementación en PostgreSQL del TP3, indicar esa limitación en lugar de presentar como ejecutable una ASSERTION.
 
 ### Cómo elegir el alcance
 
@@ -199,3 +199,7 @@ ON UPDATE RESTRICT;
 ```
 
 Los nombres de columnas del ejemplo son ilustrativos; en los ejercicios 1 y 2 se deben tomar los nombres y flechas del diagrama del enunciado.
+
+## Fuente de estudio
+
+Enunciado del TP3 en la carpeta `../Practicos` y filminas de cátedra `BDI_03.P1 (Restricciones-1).pdf; BDI_03.P1 (Restricciones-2).pdf` (carpeta de cursada 2023).

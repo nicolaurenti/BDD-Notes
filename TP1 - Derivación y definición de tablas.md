@@ -5,6 +5,8 @@ tags:
 
 # Práctico 1 — Derivación de tablas
 
+Este práctico parte del MERE y termina en un esquema de tablas con tipos, claves y referencias. Las notas explican cómo justificar la derivación y cómo escribir las operaciones de creación y modificación pedidas por el enunciado.
+
 ## 1. [[Pasaje de MERE al modelo relacional]]
 
 ## 2. [[Derivación de relaciones y participación]]
@@ -40,3 +42,10 @@ tags:
 - [ ] Insertar datos respetando las restricciones.
 - [ ] Actualizar una fila, un subconjunto o todas las filas.
 - [ ] Explicar el borrado de filas y su relación con las FK.
+
+## Criterio de estudio y fuentes
+
+Las explicaciones se apoyan en este práctico y los anteriores. Se conserva la sintaxis de la cátedra; las diferencias de PostgreSQL se tratan por separado cuando las pide la consigna. Los ejemplos de teoría son didácticos y no sustituyen la resolución personal.
+
+- Enunciado local: `../Practicos/Practico 1 - Derivacion tablas.docx`.
+- Filminas cotejadas: `BDI_01 (Intro - creacion esquemas).pdf`, en `../Contenido extra/Filminas y Practicos de cursada/2023/`.

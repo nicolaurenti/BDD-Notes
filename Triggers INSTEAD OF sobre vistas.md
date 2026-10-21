@@ -37,7 +37,21 @@ $$;
 CREATE TRIGGER tr_actualizar_cantidad_vista
 INSTEAD OF UPDATE ON entregas_kp_3
 FOR EACH ROW
-EXECUTE FUNCTION actualizar_cantidad_vista();
+EXECUTE PROCEDURE actualizar_cantidad_vista();
 ```
 
-Se filtra la tabla base por la clave completa de `OLD`. Este ejemplo habilita UPDATE con esa política; no implementa INSERT ni DELETE. Los filtros requeridos por el negocio deben controlarse explícitamente cuando se escribe mediante triggers: no asumir que WCO resuelve automáticamente una política customizada.
+Se filtra la tabla base por la clave completa de `OLD`. Este ejemplo habilita UPDATE con esa política; no implementa INSERT ni DELETE. Los filtros requeridos por el negocio deben controlarse explícitamente cuando se escribe mediante triggers: no asumir que WCO resuelve automáticamente la política definida en el trigger.
+
+## Por qué aquí se modifica la tabla base
+
+El trigger reemplaza la operación solicitada sobre la vista por el código que se escribió. NEW contiene los valores que el usuario quiere ver y OLD los de la fila seleccionada. El UPDATE de la función indica explícitamente qué tabla y columnas cambian: el motor no tiene que adivinarlo desde el join.
+
+Con una fila `(10, P1, 5, 'Titulo A')`, pedir cantidad 8 actualiza el renglón cuya clave anterior es `(10, P1)`. Filtrar solo por película podría modificar varios renglones; usar toda la clave de OLD identifica el original incluso en políticas que admitieran cambiar una parte de la clave.
+
+El IF del ejemplo rechaza cambios de clave y título porque la política elegida solo habilita cantidad. Si se quisiera admitir modificaciones del título, habría que declarar que se actualiza PELICULA y aceptar su efecto sobre todas las filas que la referencian. El enunciado exige justificar esa propagación; «agregar INSTEAD OF» no define por sí solo una política correcta.
+
+RETURN NEW indica que el trigger atendió la actualización. RETURN NULL haría que se considere no procesada esa fila de la vista. Para INSERT y DELETE se requieren sus propias operaciones y retornos adecuados; este ejemplo no los habilita. Se conserva EXECUTE PROCEDURE, igual que en el TP4.
+
+## Fuente de estudio
+
+Enunciado del TP5 en la carpeta `../Practicos` y filminas de cátedra `BDI_05 (Vistas).pdf` (carpeta de cursada 2023).

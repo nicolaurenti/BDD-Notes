@@ -5,15 +5,34 @@ tags:
 
 # Checkpoints y transacciones activas
 
+El checkpoint del modelo de la cátedra registra un punto en que se fuerzan a disco los efectos de las transacciones ya confirmadas. Las filminas describen suspender temporalmente el procesamiento, escribir esos efectos y el registro de control, y reanudarlo. Se usa ese modelo para resolver los gráficos y logs del TP8.
 
-Un checkpoint limita trabajo de recuperación según el algoritmo: no es un COMMIT de todas las transacciones. Una transacción activa durante el checkpoint puede necesitar atención después de la falla.
+## Qué garantiza y qué no
 
-En un modelo didáctico donde el checkpoint deja durables los efectos ya confirmados antes de él:
+No confirma transacciones activas. Si T1 había empezado y todavía no tenía COMMIT, sigue activa después del checkpoint. Una escritura de T1 anterior al control no queda automáticamente fuera del análisis: la decisión se toma por la situación de **T1**, no solo por la posición de esa escritura.
 
-| Situación en la falla | UNDO/REDO habitual |
+Para UNDO/REDO, bajo ese modelo:
+
+| Situación | Acción |
 |---|---|
-| Confirmó antes del checkpoint y sus efectos están asegurados | Ninguna acción adicional |
-| Confirmó después y sus páginas pueden estar pendientes | REDO |
-| No confirmó y pudo persistir escrituras | UNDO |
+| Confirmada antes del checkpoint, efectos asegurados | No necesita recuperación adicional |
+| Confirmada después del checkpoint y antes de la falla | REDO de sus efectos que corresponda recuperar |
+| No confirmada al fallar, con posibilidad de páginas escritas | UNDO |
 
-En checkpoints no quiescentes o difusos, el punto de arranque y las transacciones pendientes se obtienen de metadatos del algoritmo. No usar la regla «ignorar todo lo anterior al checkpoint» sin esa garantía. [Checkpoints y WAL en PostgreSQL](https://www.postgresql.org/docs/current/wal-configuration.html).
+La estrategia puede quitar alguna necesidad: en diferida no se hace UNDO de datos persistidos no confirmados; con FORCE al COMMIT no se necesita REDO de confirmadas.
+
+## Ejemplo temporal
+
+```text
+T1: START -- escritura -- |CHECKPOINT| -- COMMIT -- |FALLA|
+T2: START -- COMMIT ----- |CHECKPOINT| ------------ |FALLA|
+T3:                      |CHECKPOINT| -- START --- |FALLA|
+```
+
+T2 quedó asegurada por el checkpoint. T1 confirma después y se considera para REDO en UNDO/REDO, incluyendo las escrituras suyas que no quedaron aseguradas por el control. T3 no confirma y se considera para UNDO si pudo escribir páginas.
+
+Para dibujar el gráfico, marcar START y COMMIT de cada transacción sobre una línea de tiempo común, y luego las dos verticales de checkpoint y falla. Una línea abierta en la falla no se transforma en confirmada porque haya comenzado hace mucho.
+
+## Fuente de estudio
+
+Enunciado del TP8 en la carpeta `../Practicos` y filminas de cátedra `BDI_08 (Proc_Transacciones).pdf` (carpeta de cursada 2023).

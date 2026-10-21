@@ -102,7 +102,7 @@ JOIN equipo e2 ON e1.puntos = e2.puntos;
 
 El join no elige una única coincidencia por fila: devuelve **todas las parejas que satisfacen el ON**. Los alias representan dos usos de la misma tabla.
 
-Ver Valores NULL y lógica de tres valores y Conteos con joins.
+Los nulos y los conteos del join se explican en esta nota y en el bloque de NULL del TP2.
 
 
 ### Conteos de joins
@@ -138,3 +138,23 @@ COUNT(DISTINCT v.nro_voluntario)
 
 > [!important]
 > Antes de agregar, identificar qué representa cada fila del resultado del join: una persona, una tarea, una entrega o una combinación.
+
+## Una tabla pequeña para seguir el LEFT JOIN
+
+Sean instituciones 20 y 50, y dos voluntarios de 20: `(1, 500 horas)` y `(2, 2000 horas)`. El LEFT JOIN sin otros filtros produce:
+
+| Institución | Voluntario | Horas |
+|---|---|---:|
+| 20 | 1 | 500 |
+| 20 | 2 | 2000 |
+| 50 | NULL | NULL |
+
+Si `horas > 1000` está en ON, las coincidencias se buscan con ese requisito: salen `(20, 2, 2000)` y `(50, NULL, NULL)`. Si está en WHERE, se filtra después de unir: de la tabla anterior solo queda `(20, 2, 2000)`, porque NULL > 1000 no es TRUE.
+
+Al agrupar el join original por la clave de la institución, COUNT(*) produce 2 para 20 y 1 para 50. COUNT de la PK del voluntario produce 2 y 0. La diferencia proviene de la fila que LEFT JOIN conserva para representar la institución sin coincidencias.
+
+En las uniones por departamento de Películas, usar `(id_distribuidor, id_departamento)`. Igualar solo id_departamento puede unir departamentos diferentes que comparten número y multiplicar filas sin que corresponda al modelo.
+
+## Fuente de estudio
+
+Enunciado del TP2 en la carpeta `../Practicos` y filminas de cátedra `BDI_02.P1 (Consultas–1).pdf; BDI_02.P2 (Consultas–2).pdf` (carpeta de cursada 2023).

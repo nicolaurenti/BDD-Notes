@@ -93,7 +93,7 @@ FROM equipo;
 
 Si `descripcion` es `NULL`, devuelve el prefijo `Su descripción es `, conservando el espacio final. Sin `COALESCE`, la expresión con `||` devuelve `NULL`.
 
-Ver Valores NULL y lógica de tres valores.
+El bloque de NULL del TP2 desarrolla la lógica de tres valores.
 
 ## Manejo de fechas
 
@@ -156,3 +156,22 @@ FROM voluntario;
 ```
 
 La fecha de nacimiento más reciente corresponde al más joven.
+
+## Por qué importan los paréntesis y los límites
+
+Si se busca «nombres que comienzan con O, A o C y más de 1000 horas», la condición es:
+
+```sql
+WHERE (nombre LIKE 'O%' OR nombre LIKE 'A%' OR nombre LIKE 'C%')
+  AND horas_aportadas > 1000
+```
+
+Sin los paréntesis, AND se une solo con la última alternativa: una persona cuyo nombre empieza con O podría pasar aunque tenga 200 horas. Para detectar este error, probar una fila que cumpla la primera alternativa pero incumpla el requisito común.
+
+Con fechas, «a partir de 1998» incluye todos los años siguientes; «durante 1998» limita el intervalo a ese año. En el primer caso basta `fecha_nacimiento >= TO_DATE('1998-01-01', 'YYYY-MM-DD')`. En el segundo se agrega el límite anterior a 1999. No reemplazar ambas expresiones por una comparación con el año 1998 sin leer la consigna.
+
+Para edad, restar los años de nacimiento y actual puede anticipar el cumpleaños: una persona nacida en diciembre aún no cumplió años en octubre. `EXTRACT(YEAR FROM AGE(fecha_nacimiento))` trabaja con años cumplidos. Para cumpleaños, comparar día y mes, porque igualar la fecha completa exigiría también el año actual.
+
+## Fuente de estudio
+
+Enunciado del TP2 en la carpeta `../Practicos` y filminas de cátedra `BDI_02.P1 (Consultas–1).pdf; BDI_02.P2 (Consultas–2).pdf` (carpeta de cursada 2023).

@@ -102,7 +102,7 @@ Devuelve **una fila con `NULL`**. En cambio, `COUNT(DISTINCT puntos)` devuelve *
 
 La eliminación de duplicados no usa el mismo criterio que una comparación ordinaria: `NULL = NULL` sigue dando `UNKNOWN`.
 
-Ver Valores NULL y lógica de tres valores.
+El bloque de NULL del TP2 desarrolla la lógica de tres valores.
 
 ## Ordenamiento, primeros N y paginación
 
@@ -149,3 +149,24 @@ OFFSET 10;
 
 > [!warning]
 > Para paginar de forma estable se necesita un `ORDER BY` que determine un orden completo, utilizando una clave para resolver empates.
+
+## Seguir una consulta con datos pequeños
+
+Supongamos estos voluntarios, mostrados como `(nro, institución, horas)`: `(1, 20, 500)`, `(2, 20, 2000)`, `(3, 20, 3000)`, `(4, 50, 4000)`.
+
+```sql
+SELECT id_institucion, COUNT(*) AS cantidad
+FROM voluntario
+WHERE horas_aportadas > 1000
+GROUP BY id_institucion
+HAVING COUNT(*) >= 2
+ORDER BY id_institucion;
+```
+
+WHERE elimina al voluntario 1. Quedan dos filas de la institución 20 y una de la 50. GROUP BY forma esos dos grupos; COUNT produce 2 y 1; HAVING conserva solo el grupo de 20. El resultado es una fila `(20, 2)`.
+
+Si se quitara WHERE, la cantidad para 20 sería 3. Si se cambiara HAVING por `WHERE COUNT(*) >= 2`, la consulta sería incorrecta: WHERE decide sobre filas antes de formar los grupos. Escribir primero qué representa una fila de entrada y qué debe representar una fila de salida ayuda a elegir las cláusulas.
+
+## Fuente de estudio
+
+Enunciado del TP2 en la carpeta `../Practicos` y filminas de cátedra `BDI_02.P1 (Consultas–1).pdf; BDI_02.P2 (Consultas–2).pdf` (carpeta de cursada 2023).

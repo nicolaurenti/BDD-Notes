@@ -5,6 +5,8 @@ tags:
 
 # Práctico 5 — Vistas
 
+Una vista deriva información de tablas u otras vistas. El práctico pide definirla, justificar si admite actualizaciones y seguir la propagación hacia la base. Se separa el criterio SQL-1999 de las filminas del comportamiento PostgreSQL cuando la consigna pide ambos.
+
 ## 1. [[Definición y uso de vistas]]
 
 ## 2. [[Actualización de vistas y restricciones base]]
@@ -34,8 +36,13 @@ tags:
 - [ ] Conservar entidades sin relacionados en vistas de conteos.
 - [ ] Seguir operaciones acumulativas y restricciones base.
 
-## Material
+## Conocimientos anteriores
 
-- Enunciado principal: `../Practicos/Practico 5 - Vistas.docx`.
-- Filminas de cátedra: `BDI_2021_06_Vistas.pptx` (criterios presentados como SQL-1999).
-- Relacionados: TP4 - Triggers, TP6 - Seguridad, Conteos con joins.
+- Relacionados: TP4 - Triggers; joins, conteos y subconsultas del TP2.
+
+## Criterio de estudio y fuentes
+
+Las explicaciones se apoyan en este práctico y los anteriores. Se conserva la sintaxis de la cátedra; las diferencias de PostgreSQL se tratan por separado cuando las pide la consigna. Los ejemplos de teoría son didácticos y no sustituyen la resolución personal.
+
+- Enunciado local: `../Practicos/Practico 5 - Vistas.docx`.
+- Filminas cotejadas: `BDI_05 (Vistas).pdf`, en `../Contenido extra/Filminas y Practicos de cursada/2023/`.

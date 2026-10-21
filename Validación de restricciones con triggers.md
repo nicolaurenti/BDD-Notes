@@ -5,65 +5,95 @@ tags:
 
 # Validación de restricciones con triggers
 
-## Eventos críticos de una restricción
+El trabajo comienza por la regla y sus **eventos críticos**, no por escribir CREATE TRIGGER. Un evento es crítico si puede convertir un estado válido en inválido. La misma restricción puede necesitar controles en varias tablas.
 
-Ejemplo del TP: proveedor y sucursal deben ser de la misma localidad.
+## Completar la grilla de eventos
 
-| Tabla | INSERT | UPDATE relevante | DELETE |
+Para «cada proveedor solo provee a sucursales de su localidad», la relación se registra en PROVEE, pero las localidades están en las tablas de sus extremos.
+
+| Tabla | INSERT | UPDATE | DELETE |
 |---|---|---|---|
-| PROVEE | Verificar la relación nueva | Si cambia proveedor o sucursal | Quita una posible infracción; considerar otras RI |
-| PROVEEDOR | No crea relación por sí solo | Si cambia localidad, revisar sus relaciones | Depende de FK y cascadas |
-| SUCURSAL | No crea relación por sí sola | Si cambia localidad, revisar sus relaciones | Depende de FK y cascadas |
+| PROVEE | Revisar nueva asociación | Revisar si cambia proveedor o sucursal | Elimina una asociación: no crea esta infracción |
+| PROVEEDOR | No crea una asociación por sí solo | Un cambio de localidad exige revisar sus asociaciones | Revisar la acción referencial; restringir o quitar asociaciones no crea una desigualdad |
+| SUCURSAL | No crea una asociación por sí sola | Un cambio de localidad exige revisar sus asociaciones | Mismo razonamiento sobre sus referencias |
 
-Para cada restricción, listar **todas las operaciones capaces de romperla**. Ejemplos:
+Si proveedor y sucursal son de Tandil, la asociación es válida. Si luego la sucursal pasa a Azul, puede quedar inválida **sin tocar PROVEE**. Un único trigger de INSERT sobre PROVEE no mantiene la regla completa.
 
-- Hasta 15 palabras: INSERT o cambio de artículo en `contiene`.
-- Horas dentro de tarea: cambio de horas/tarea del voluntario **y** de los límites de la tarea.
-- Horas no superiores al coordinador: cambio del coordinado **y** disminución de horas del coordinador.
+Para «horas dentro de los límites de la tarea» hay que revisar inserción/cambio de horas o tarea del voluntario y cambios de mínimos/máximos en TAREA. Para «nadie supera a su coordinador», también es crítico reducir las horas de quien coordina a otros.
 
-Un trigger que cuenta filas puede fallar ante dos transacciones concurrentes que ven el mismo estado. Para garantizar límites globales se debe coordinar el acceso, por ejemplo bloqueando una fila padre común en todos los caminos relevantes, o usando aislamiento serializable con reintentos. Ver TP8 - Concurrencia y recuperación.
+## Ejemplo completo de un máximo por artículo
 
-## Reinicio de horas y control de variación
-
-Este ejemplo cubre el primer requisito del ejercicio 5:
+Se supone que cada fila de CONTIENE representa una asociación única de artículo y palabra. Un control AFTER ROW puede consultar el estado que ya incluye la inserción o el cambio de artículo:
 
 ```sql
-CREATE OR REPLACE FUNCTION reiniciar_horas_tarea()
-RETURNS trigger
-LANGUAGE plpgsql
-AS $$
+CREATE OR REPLACE FUNCTION controlar_max_palabras()
+RETURNS trigger AS $$
+DECLARE
+    cantidad INTEGER;
 BEGIN
-    IF NEW.id_tarea IS DISTINCT FROM OLD.id_tarea THEN
-        NEW.horas_aportadas := 0;
+    SELECT COUNT(*) INTO cantidad
+    FROM contiene
+    WHERE id_articulo = NEW.id_articulo;
+
+    IF cantidad > 15 THEN
+        RAISE EXCEPTION 'El articulo supera las 15 palabras';
     END IF;
     RETURN NEW;
 END;
-$$;
+$$ LANGUAGE 'plpgsql';
 
-CREATE TRIGGER tr_reiniciar_horas_tarea
-BEFORE UPDATE OF id_tarea ON voluntario
+CREATE TRIGGER tr_max_palabras
+AFTER INSERT OR UPDATE OF id_articulo ON contiene
 FOR EACH ROW
-EXECUTE FUNCTION reiniciar_horas_tarea();
+EXECUTE PROCEDURE controlar_max_palabras();
 ```
 
-`IS DISTINCT FROM` detecta cambios incluso si interviene NULL. `UPDATE OF` se activa cuando la columna figura en el SET, aunque su valor no cambie: el IF verifica el cambio real.
+Con 14 asociaciones, insertar una deja 15 y pasa. Con 15, insertar otra deja 16 y la excepción rechaza la sentencia; AFTER no significa que el cambio ya sea irreversible. Mover una asociación a un artículo con 15 también se rechaza. DELETE disminuye el conteo y no puede infringir este máximo.
 
-Modificar `NEW` evita ejecutar otro UPDATE sobre la misma tabla, que puede producir recursión. Las filminas usan `EXECUTE PROCEDURE` en cabeceras de trigger; la forma moderna es `EXECUTE FUNCTION`, y el objeto llamado sigue siendo una función `RETURNS trigger`.
+El límite depende del momento: en BEFORE INSERT el conteo todavía no incluye la nueva fila, por lo que se rechazaría cuando el conteo previo ya fuera 15. Copiar la misma comparación `> 15` en un BEFORE admitiría indebidamente la número 16.
 
-El segundo requisito del ejercicio 5 tiene redacción ambigua. Si se interpreta como «la variación máxima es ±10 %», para horas anteriores no negativas:
+## Comparar valores anteriores y propuestos
+
+Para un cambio real, se comparan OLD y NEW. `UPDATE OF id_tarea` indica que la columna figura en SET; no asegura que su valor sea distinto. `IS DISTINCT FROM` permite detectar diferencia incluso con NULL: ambos nulos no son distintos; solo uno nulo sí.
+
+En el ejercicio 5, cambiar de tarea debe colocar horas en cero aunque la sentencia proponga otra cantidad. Se modifica NEW en BEFORE: así se guarda directamente la fila corregida, sin emitir otro UPDATE sobre la misma tabla.
 
 ```sql
--- Fragmento dentro de la función, con política de nulidad definida.
-IF NEW.horas_aportadas < OLD.horas_aportadas * 0.90
-   OR NEW.horas_aportadas > OLD.horas_aportadas * 1.10 THEN
-    RAISE EXCEPTION 'La variación de horas supera el 10 por ciento';
-END IF;
+CREATE OR REPLACE FUNCTION controlar_cambio_voluntario()
+RETURNS trigger AS $$
+BEGIN
+    IF NEW.id_tarea IS DISTINCT FROM OLD.id_tarea THEN
+        NEW.horas_aportadas := 0;
+    ELSIF NEW.horas_aportadas IS DISTINCT FROM OLD.horas_aportadas THEN
+        IF NEW.horas_aportadas IS NULL
+           OR OLD.horas_aportadas IS NULL THEN
+            RAISE EXCEPTION 'No se puede calcular la variacion con horas nulas';
+        END IF;
+        IF NEW.horas_aportadas < OLD.horas_aportadas * 0.90
+           OR NEW.horas_aportadas > OLD.horas_aportadas * 1.10 THEN
+            RAISE EXCEPTION 'La variacion supera el 10 por ciento';
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE 'plpgsql';
+
+CREATE TRIGGER tr_cambio_voluntario
+BEFORE UPDATE ON voluntario
+FOR EACH ROW
+EXECUTE PROCEDURE controlar_cambio_voluntario();
 ```
 
-Explicitar la interpretación. Si cambia tarea, priorizar el reinicio con `IF ... ELSIF ...`: de otro modo el control porcentual podría rechazar el cero obligatorio. Si las horas anteriores son cero, ±10 % solo admite cero. Controlar nulos explícitamente si no se permiten.
+El segundo requisito tiene una redacción ambigua. Este ejemplo declara la interpretación «variación máxima de ±10 % respecto del valor anterior», con horas no negativas, y rechaza cambios de horas si no se puede calcular la variación por un nulo. No se atribuye esa política de nulos al enunciado.
 
-## Comprobación de triggers
+Con 100 horas, 90 y 110 pasan; 89 y 111 no. Si cambia la tarea y la sentencia propone 105 horas, se guarda 0: el primer IF tiene prioridad y el ELSIF evita rechazar ese cero obligatorio por la regla porcentual. Con horas anteriores 0, un margen del 10 % solo permite 0.
 
-Para cada regla, preparar al menos un caso válido, uno que deba rechazarse y uno de borde. Probar también un UPDATE de varias filas, nulos y cambios en la tabla relacionada. Comprobar el estado final, no solo el mensaje del motor.
+## Comprobar el diseño
 
-Los ejemplos de esta nota son material de estudio: no fueron instalados en las bases existentes.
+Para cada regla preparar un caso válido, uno inválido y uno en el límite. Además de insertar, modificar las columnas y tablas relacionadas: una prueba que nunca cambia TAREA no detecta la falta de ese control.
+
+En la prueba, anotar estado previo, sentencia, resultado esperado y estado final. Un UPDATE con varias filas debe mantener la regla sobre todas; no probar solamente operaciones de una fila. Los fragmentos son material de estudio y no fueron instalados ni ejecutados en las bases del proyecto.
+
+## Fuente de estudio
+
+Enunciado del TP4 en la carpeta `../Practicos` y filminas de cátedra `BDI_04 (SQL Procedural).pdf` (carpeta de cursada 2023).

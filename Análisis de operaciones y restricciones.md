@@ -22,3 +22,19 @@ Reglas delicadas del ejercicio 5:
 - Si cambian horas o tarea de un coordinador, revisar también sus coordinados.
 - Cambiar límites de una tarea puede invalidar voluntarios existentes.
 - Para «cambios de institución por año», definir qué evento histórico representa un cambio; no contar automáticamente toda tarea histórica como cambio de institución.
+
+## Una forma de presentar la justificación
+
+Para cada sentencia, escribir: filas seleccionadas, valores propuestos, reglas afectadas y estado resultante. Por ejemplo, con un padre P1 y dos hijas que lo referencian mediante RESTRICT, una baja de P1 selecciona una fila pero se rechaza porque existen referencias. Una baja de P9 inexistente selecciona cero filas: no hay padre ni referencias que eliminar.
+
+En el ejercicio 1 se restaura mentalmente la instancia original antes de cada inciso. En el 2 se conserva el resultado de cada sentencia aceptada. Si una sentencia rechazada proponía cambiar un identificador, el inciso siguiente sigue encontrando el identificador anterior, no el propuesto.
+
+Para clasificar reglas, comenzar escribiendo la consulta que permitiría detectar una infracción. Si se necesitan dos columnas de PRODUCTO, el alcance es tupla; si se cuentan filas de PROVEE, es tabla; si se comparan localidades de PROVEEDOR y SUCURSAL a través de PROVEE, es general. Luego elegir el recurso SQL-1999 y responder por separado si PostgreSQL admite esa declaración.
+
+## Reglas sobre el historial
+
+«No más de tres cambios de institución en un año» cuenta cambios, no instituciones distintas ni tareas distintas. Una persona puede cambiar cuatro veces alternando entre dos instituciones. Si HISTORICO no distingue cuándo cambió de institución frente a cuándo cambió de tarea, hay que explicar qué información falta; no inventar que cualquier fila histórica representa un cambio de institución.
+
+## Fuente de estudio
+
+Enunciado del TP3 en la carpeta `../Practicos` y filminas de cátedra `BDI_03.P1 (Restricciones-1).pdf; BDI_03.P1 (Restricciones-2).pdf` (carpeta de cursada 2023).

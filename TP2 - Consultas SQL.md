@@ -5,6 +5,8 @@ tags:
 
 # Práctico 2 — Consultas SQL
 
+El objetivo es traducir cada enunciado a una consulta y poder explicar por qué devuelve esas filas. Los ejemplos desarrollan nulos, agrupamientos, joins, subconsultas y conjuntos con los esquemas de este práctico y de Grabaciones del TP1.
+
 Los contenidos están agrupados en ocho bloques para estudiar temas relacionados juntos. Cada bloque corresponde a una única nota del mapa.
 
 ## 1. [[Estructura general de una consulta|Estructura, ejecución y presentación de resultados]]
@@ -70,3 +72,10 @@ Recopilación de las resoluciones compartidas, conservando las consultas y anota
 ## Repaso del ejercicio 2.1 — Valores nulos
 
 Resultados y errores frecuentes en [[Valores NULL y lógica de tres valores#Ejercicio 2.1: cuatro equipos con puntos y descripción nulos]]. Para el apartado b, ver [[Funciones de agregación#COALESCE: reemplazar el resultado o los datos de entrada|Agregaciones — COALESCE]].
+
+## Criterio de estudio y fuentes
+
+Las explicaciones se apoyan en este práctico y los anteriores. Se conserva la sintaxis de la cátedra; las diferencias de PostgreSQL se tratan por separado cuando las pide la consigna. Los ejemplos de teoría son didácticos y no sustituyen la resolución personal.
+
+- Enunciado local: `../Practicos/Practico 2 - Consultas SQL - Parte 1.docx; Practico 2 - Consultas SQL - Parte 2.docx`.
+- Filminas cotejadas: `BDI_02.P1 (Consultas–1).pdf; BDI_02.P2 (Consultas–2).pdf`, en `../Contenido extra/Filminas y Practicos de cursada/2023/`.

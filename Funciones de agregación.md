@@ -60,7 +60,7 @@ SELECT COALESCE(CAST(AVG(puntos) AS text), '') AS promedio
 FROM equipo;
 ```
 
-Ver Valores NULL y lógica de tres valores.
+El bloque de NULL del TP2 desarrolla la lógica de tres valores.
 
 ## GROUP BY y HAVING
 
@@ -122,51 +122,33 @@ FROM voluntario
 WHERE horas_aportadas > 1000;
 ```
 
-#### Promedio condicional conservando otros datos
+#### Conservar el total y calcular un promedio de un subconjunto
+
+El recurso básico del TP es separar las consultas: una cuenta todas las filas y otra filtra las que entran al promedio. Para una institución concreta:
 
 ```sql
-SELECT
-    id_institucion,
-    COUNT(*) AS total_voluntarios,
-    AVG(horas_aportadas)
-        FILTER (WHERE horas_aportadas > 1000)
-        AS promedio_mayores_a_1000
+SELECT AVG(horas_aportadas)
 FROM voluntario
-GROUP BY id_institucion;
+WHERE id_institucion = 20
+  AND horas_aportadas > 1000;
 ```
 
-`FILTER` afecta solamente a la agregación donde aparece.
+No reemplazar por cero las horas que no cumplen: eso las haría participar del promedio. Si en esa institución hay horas 500, 2000 y 3000, el promedio solicitado es `(2000 + 3000) / 2 = 2500`, no `5000 / 3`.
 
-#### Alternativa con CASE
+#### Promedio y porcentaje responden preguntas distintas
+
+El promedio anterior mide horas. Para medir qué proporción de voluntarios supera 1000 horas se cuentan personas:
 
 ```sql
-SELECT AVG(
-    CASE
-        WHEN horas_aportadas > 1000
-        THEN horas_aportadas
-    END
-)
+SELECT 100.0 * (
+    SELECT COUNT(*)
+    FROM voluntario
+    WHERE horas_aportadas > 1000
+) / NULLIF(COUNT(*), 0) AS porcentaje
 FROM voluntario;
 ```
 
-Cuando no se cumple la condición, el `CASE` devuelve `NULL`, que `AVG` ignora.
-
-> [!warning]
-> Agregar `ELSE 0` cambia el cálculo: las filas que no cumplen la condición pasan a participar del promedio como ceros.
-
-#### Promedio y porcentaje no son lo mismo
-
-Para calcular el porcentaje de voluntarios que cumplen una condición:
-
-```sql
-SELECT
-    100.0 * COUNT(*) FILTER (WHERE horas_aportadas > 1000)
-    / NULLIF(COUNT(*), 0) AS porcentaje
-FROM voluntario;
-```
-
-- `100.0` evita la división entera.
-- `NULLIF` evita dividir por cero.
+El numerador cuenta los casos que cumplen y el denominador cuenta todos. `100.0` permite un resultado decimal; NULLIF devuelve NULL si el total es cero y evita la división inválida. Con 2 casos sobre 3, se obtiene aproximadamente 66.67 %. Las horas NULL no cumplen el filtro del numerador, pero sus filas sí integran COUNT(*) del denominador; cambiar eso requiere una decisión explícita.
 
 ## Comparación con totales y porcentajes
 
@@ -189,3 +171,13 @@ La subconsulta calcula el total general; el agrupamiento calcula la cantidad por
 > Definir correctamente el denominador: total de personas, total de tareas distintas o total de registros no significan lo mismo.
 
 Este ejemplo considera instituciones con al menos un voluntario. Para incluir las que tienen cero, hay que partir de `institucion` y utilizar un `LEFT JOIN`.
+
+## Contar lo que pide el enunciado
+
+Si un voluntario tiene tres registros históricos con tareas A, A y B, `COUNT(*)` da 3 y `COUNT(DISTINCT id_tarea)` da 2. La primera cantidad representa registros o períodos; la segunda, tareas diferentes. Ninguna demuestra por sí sola cuántas veces cambió de tarea: para hablar de cambios debe estar definido cómo cada registro representa un período o una transición.
+
+En una institución con voluntarios `(coordinador 10, persona 1)`, `(10, 2)` y `(20, 3)`, agrupar solo por institución produce cantidad 3. Agrupar por institución y coordinador produce los grupos de tamaños 2 y 1. Para «coordinadores con menos de 3 voluntarios dentro de cada institución», la clave del grupo debe contener ambas columnas.
+
+## Fuente de estudio
+
+Enunciado del TP2 en la carpeta `../Practicos` y filminas de cátedra `BDI_02.P1 (Consultas–1).pdf; BDI_02.P2 (Consultas–2).pdf` (carpeta de cursada 2023).
