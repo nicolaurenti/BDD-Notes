@@ -7,14 +7,14 @@ tags:
 
 ## Creación de tablas
 
-Ejemplo basado en el modelo de artículos y palabras:
+Ejemplo de artículos y palabras, conservando las obligaciones de título, autor, fecha y descripción y la unicidad de título que muestran las filminas:
 
 ```sql
 CREATE TABLE articulo (
     id_articulo NUMERIC(4,0),
-    titulo      VARCHAR(120),
-    autor       VARCHAR(30),
-    fecha_pub   DATE,
+    titulo      VARCHAR(120) NOT NULL UNIQUE,
+    autor       VARCHAR(30) NOT NULL,
+    fecha_pub   DATE NOT NULL,
 
     CONSTRAINT pk_articulo
         PRIMARY KEY (id_articulo)
@@ -23,7 +23,7 @@ CREATE TABLE articulo (
 CREATE TABLE palabra (
     cod_p       NUMERIC(4,0),
     idioma      CHAR(2),
-    descripcion VARCHAR(25),
+    descripcion VARCHAR(25) NOT NULL,
 
     CONSTRAINT pk_palabra
         PRIMARY KEY (cod_p, idioma)
