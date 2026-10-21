@@ -5,23 +5,11 @@ tags:
 
 # Práctico 4 — Acciones procedurales y triggers
 
-## 1. [[Triggers, funciones y procedimientos]]
+## 1. [[Fundamentos y ejecución de triggers]]
 
-## 2. [[Evento, momento y granularidad de triggers]]
+## 2. [[Validación de restricciones con triggers]]
 
-## 3. [[OLD, NEW y retornos de triggers]]
-
-## 4. [[Reinicio de horas y control de variación]]
-
-## 5. [[Eventos críticos de una restricción]]
-
-## 6. [[Auditoría por fila y por sentencia]]
-
-## 7. [[Simulación de triggers ROW y STATEMENT]]
-
-## 8. [[Historial, resúmenes y carga inicial]]
-
-## 9. [[Comprobación de triggers]]
+## 3. [[Auditoría, historial y resúmenes con triggers]]
 
 ## Resolución
 
