@@ -8,19 +8,14 @@ tags:
 ## Ejercicio 1 — Resolución corregida
 
 Revisado contra el enunciado y el diagrama de `../Practicos/Practico 3 - Restricciones de Integridad Declarativas.docx`.
-
-Se usan los nombres del diagrama: `Trabaja_En`, `TipoE`, `NroE` e `IdProy`. El texto de b.5 escribe `TrabajaEn`; aquí se unifica como `Trabaja_En`. Si las tablas reales tienen nombres con guiones bajos como `tipo_e`, adaptar los identificadores. Los ejemplos son de estudio: no se ejecutó SQL.
-
 ### a) Incorporar las restricciones referenciales
 
-Las tablas y sus claves primarias ya existen. Cada FK se declara en la tabla hija, que contiene las columnas de referencia.
-
-| RIR | Hija → padre | FK | ON DELETE | ON UPDATE |
-|---|---|---|---|---|
-| R1 | Trabaja_En → Empleado | `(TipoE, NroE)` | CASCADE | RESTRICT |
-| R2 | Trabaja_En → Proyecto | `(IdProy)` | RESTRICT | CASCADE |
-| R3 | Auspicio → Proyecto | `(IdProy)` | RESTRICT | RESTRICT |
-| R4 | Auspicio → Empleado | `(TipoE, NroE)` | SET NULL | RESTRICT |
+| RIR | Hija → padre          | FK              | ON DELETE | ON UPDATE |
+| --- | --------------------- | --------------- | --------- | --------- |
+| R1  | Trabaja_En → Empleado | `(TipoE, NroE)` | CASCADE   | RESTRICT  |
+| R2  | Trabaja_En → Proyecto | `(IdProy)`      | RESTRICT  | CASCADE   |
+| R3  | Auspicio → Proyecto   | `(IdProy)`      | RESTRICT  | RESTRICT  |
+| R4  | Auspicio → Empleado   | `(TipoE, NroE)` | SET NULL  | RESTRICT  |
 
 ```sql
 -- R1
@@ -56,10 +51,6 @@ ON DELETE SET NULL
 ON UPDATE RESTRICT;
 ```
 
-**Corrección de tu respuesta:** las relaciones y acciones de R1, R2 y R3 estaban bien. En R4 habías escrito `ALTER TABLE TRABAJA_EN`: corresponde **Auspicio**. Sus columnas `TipoE` y `NroE` admiten NULL según el diagrama.
-
-Se omite `MATCH` en estas sentencias; en PostgreSQL el valor por defecto es SIMPLE. El apartado c compara por separado las tres modalidades para R4.
-
 ### b) Resultado de las operaciones
 
 **Cada operación parte de los datos originales; no son acumulativas.**
@@ -79,8 +70,6 @@ DELETE FROM Proyecto WHERE IdProy = 3;
 
 **Aceptada.** No hay filas en Trabaja_En ni en Auspicio que referencien al proyecto 3. R2 y R3 tienen `ON DELETE RESTRICT`, pero no hay referencias que bloqueen la baja. Se elimina únicamente ese proyecto.
 
-Tu respuesta era correcta.
-
 #### b.2 — Cambiar el proyecto 3 por 7
 
 ```sql
@@ -89,8 +78,6 @@ UPDATE Proyecto SET IdProy = 7 WHERE IdProy = 3;
 
 **Aceptada.** Se cambia la clave del proyecto de 3 a 7. No hay referencias a 3 en las tablas hijas ni existe otro proyecto con clave 7. R2 no tiene filas a las que propagar el cambio y R3 no lo bloquea.
 
-Tu respuesta era correcta. Se parte otra vez de la instancia original: el proyecto 3 existe al comenzar este caso.
-
 #### b.3 — Borrar el proyecto 1
 
 ```sql
@@ -98,8 +85,6 @@ DELETE FROM Proyecto WHERE IdProy = 1;
 ```
 
 **Rechazada por R2.** La fila `('A', 1, 1, …)` de Trabaja_En referencia al proyecto 1 y R2 tiene `ON DELETE RESTRICT`. No se elimina ninguna fila.
-
-Tu respuesta era correcta.
 
 #### b.4 — Borrar el empleado ('A', 2)
 
@@ -114,8 +99,6 @@ DELETE FROM Empleado WHERE TipoE = 'A' AND NroE = 2;
 3. **R4, ON DELETE SET NULL:** se conserva el auspicio del proyecto 2, pero su referencia al empleado pasa de `('A', 2)` a `(NULL, NULL)`.
 
 El proyecto 2 sigue existiendo: borrar una fila hija de Trabaja_En no borra su padre Proyecto. El auspicio continúa referenciando a ese proyecto mediante R3.
-
-**Tu respuesta era incompleta:** habías identificado el SET NULL de Auspicio, pero faltaban la baja del empleado y la cascada en Trabaja_En. Se ponen en NULL **ambas columnas de R4**, no el `IdProy` de Auspicio.
 
 #### b.5 — Cambiar de proyecto una asignación
 
