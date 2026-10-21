@@ -23,58 +23,17 @@ WHERE telefono IS NULL
 WHERE telefono = NULL
 ```
 
-### Negar una condición no incluye automáticamente los nulos
+## Comparar y reemplazar valores ausentes
 
-```sql
-WHERE NOT (porcentaje BETWEEN 0.15 AND 0.30)
-```
+Una comparación con NULL suele dar UNKNOWN; negarla no la vuelve verdadera. IS NULL prueba la ausencia de valor y COALESCE permite elegir un reemplazo explícito.
 
-Esta condición tampoco selecciona filas cuyo porcentaje sea `NULL`.
+[[TP2 - Comparaciones, negación y COALESCE con NULL|Comparaciones, negación y COALESCE con NULL]]
 
-Para incluirlas:
+### Ejemplo integrado de consultas con NULL
 
-```sql
-WHERE porcentaje NOT BETWEEN 0.15 AND 0.30
-   OR porcentaje IS NULL
-```
+El caso de cuatro equipos muestra cómo se aplican estas reglas a agregaciones, DISTINCT, concatenación, NOT IN y autojoins.
 
-### Reemplazar un NULL con COALESCE
-
-Devuelve el primer argumento no nulo:
-
-```sql
-SELECT COALESCE(telefono, 'Sin teléfono')
-FROM voluntario;
-```
-
-### Comparaciones y negación
-
-`NULL` no equivale a `0` ni a una cadena vacía (`''`). Incluso comparar dos nulos devuelve desconocido:
-
-| Expresión | Resultado |
-|---|---|
-| `NULL = NULL` | `UNKNOWN` |
-| `NULL <> NULL` | `UNKNOWN` |
-| `NOT UNKNOWN` | `UNKNOWN` |
-| `NULL IS NULL` | `TRUE` |
-| `NULL IS NOT NULL` | `FALSE` |
-
-Una condición desconocida no es falsa, pero tampoco permite que la fila pase un `WHERE`. En un `INNER JOIN`, `ON` también exige `TRUE` para formar una pareja.
-
-### Ejercicio 2.1: cuatro equipos con puntos y descripción nulos
-
-Datos de partida: cuatro equipos con identificadores 1, 2, 3 y 4; tanto `puntos` como `descripcion` son `NULL`.
-
-| Consulta o expresión | Resultado | Motivo |
-|---|---|---|
-| `AVG(puntos), COUNT(puntos), COUNT(*)` | `NULL, 0, 4` | No hay puntos no nulos, pero hay cuatro filas. |
-| `SELECT DISTINCT puntos FROM equipo` | Una fila con `NULL` | `DISTINCT` reúne los nulos en un único resultado. |
-| `'Su descripción es ' || descripcion` | `NULL` en cada fila | La concatenación con `||` propaga el nulo. |
-| `WHERE puntos NOT IN (SELECT DISTINCT puntos FROM equipo)` | Ninguna fila | `NULL NOT IN (NULL)` es `UNKNOWN`. |
-| Autojoin con `ON e1.puntos = e2.puntos` | Ninguna fila | Todas las comparaciones son `NULL = NULL`, que da `UNKNOWN`. |
-
-> [!important]
-> La consulta 2 de la imagen también contiene el filtro `NOT IN`. Por eso la consulta completa no devuelve filas. Solo si se quita ese filtro aparecen los cuatro identificadores con la descripción concatenada en `NULL`.
+[[TP2 - Ejercicio de Equipo con todos los puntos nulos|Ejercicio de Equipo con todos los puntos nulos]]
 
 ### Puntos para repasar
 
@@ -87,4 +46,14 @@ Datos de partida: cuatro equipos con identificadores 1, 2, 3 y 4; tanto `puntos`
 - [ ] Diferenciar reemplazar el resultado de una agregación de reemplazar sus datos de entrada.
 - [ ] Contar todas las parejas de un join y la fila sin coincidencia de un `LEFT JOIN`.
 
-Ver Funciones de agregación, DISTINCT, Subconsultas, Manejo de strings, Diferencias entre joins y Conteos con joins.
+Estas reglas se aplican a las agregaciones, subconsultas, textos y joins del TP2.
+
+## Cómo se combina UNKNOWN con AND y OR
+
+UNKNOWN no se convierte en FALSE: AND y OR pueden decidirse por el otro operando. La tabla de verdad permite justificar cuándo una fila pasa el WHERE.
+
+[[TP2 - AND y OR con UNKNOWN|AND y OR con UNKNOWN]]
+
+## Fuente de estudio
+
+Enunciado del TP2 en la carpeta `../Practicos` y filminas de cátedra `BDI_02.P1 (Consultas–1).pdf; BDI_02.P2 (Consultas–2).pdf` (carpeta de cursada 2023).

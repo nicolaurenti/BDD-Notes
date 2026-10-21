@@ -5,65 +5,32 @@ tags:
 
 # Validación de restricciones con triggers
 
-## Eventos críticos de una restricción
+El trabajo comienza por la regla y sus **eventos críticos**, no por escribir CREATE TRIGGER. Un evento es crítico si puede convertir un estado válido en inválido. La misma restricción puede necesitar controles en varias tablas.
 
-Ejemplo del TP: proveedor y sucursal deben ser de la misma localidad.
+## Elegir los eventos críticos
 
-| Tabla | INSERT | UPDATE relevante | DELETE |
-|---|---|---|---|
-| PROVEE | Verificar la relación nueva | Si cambia proveedor o sucursal | Quita una posible infracción; considerar otras RI |
-| PROVEEDOR | No crea relación por sí solo | Si cambia localidad, revisar sus relaciones | Depende de FK y cascadas |
-| SUCURSAL | No crea relación por sí sola | Si cambia localidad, revisar sus relaciones | Depende de FK y cascadas |
+Para completar la grilla se enumeran todas las tablas y modificaciones capaces de romper la regla, incluidas las de los extremos de una relación.
 
-Para cada restricción, listar **todas las operaciones capaces de romperla**. Ejemplos:
+[[TP4 - Ejemplo de grilla de eventos críticos|Ejemplo de grilla de eventos críticos]]
 
-- Hasta 15 palabras: INSERT o cambio de artículo en `contiene`.
-- Horas dentro de tarea: cambio de horas/tarea del voluntario **y** de los límites de la tarea.
-- Horas no superiores al coordinador: cambio del coordinado **y** disminución de horas del coordinador.
+## Validar conteos por grupo
 
-Un trigger que cuenta filas puede fallar ante dos transacciones concurrentes que ven el mismo estado. Para garantizar límites globales se debe coordinar el acceso, por ejemplo bloqueando una fila padre común en todos los caminos relevantes, o usando aislamiento serializable con reintentos. Ver TP8 - Concurrencia y recuperación.
+En un máximo por grupo, el conteo cambia según el momento del trigger: AFTER observa la fila incorporada; BEFORE todavía no. También se controla mover una asociación a otro grupo.
 
-## Reinicio de horas y control de variación
+[[TP4 - Ejemplo de máximo de palabras por artículo|Ejemplo de máximo de palabras por artículo]]
 
-Este ejemplo cubre el primer requisito del ejercicio 5:
+## Comparar y corregir la fila propuesta
 
-```sql
-CREATE OR REPLACE FUNCTION reiniciar_horas_tarea()
-RETURNS trigger
-LANGUAGE plpgsql
-AS $$
-BEGIN
-    IF NEW.id_tarea IS DISTINCT FROM OLD.id_tarea THEN
-        NEW.horas_aportadas := 0;
-    END IF;
-    RETURN NEW;
-END;
-$$;
+OLD y NEW permiten reconocer cambios reales. BEFORE puede corregir NEW directamente; la prioridad entre reglas se expresa con IF y ELSIF para que una no rechace el efecto obligatorio de otra.
 
-CREATE TRIGGER tr_reiniciar_horas_tarea
-BEFORE UPDATE OF id_tarea ON voluntario
-FOR EACH ROW
-EXECUTE FUNCTION reiniciar_horas_tarea();
-```
+[[TP4 - Ejemplo de cambio de tarea y variación de horas|Ejemplo de cambio de tarea y variación de horas]]
 
-`IS DISTINCT FROM` detecta cambios incluso si interviene NULL. `UPDATE OF` se activa cuando la columna figura en el SET, aunque su valor no cambie: el IF verifica el cambio real.
+## Comprobar el diseño
 
-Modificar `NEW` evita ejecutar otro UPDATE sobre la misma tabla, que puede producir recursión. Las filminas usan `EXECUTE PROCEDURE` en cabeceras de trigger; la forma moderna es `EXECUTE FUNCTION`, y el objeto llamado sigue siendo una función `RETURNS trigger`.
+Para cada regla preparar un caso válido, uno inválido y uno en el límite. Además de insertar, modificar las columnas y tablas relacionadas: una prueba que nunca cambia TAREA no detecta la falta de ese control.
 
-El segundo requisito del ejercicio 5 tiene redacción ambigua. Si se interpreta como «la variación máxima es ±10 %», para horas anteriores no negativas:
+En la prueba, anotar estado previo, sentencia, resultado esperado y estado final. Un UPDATE con varias filas debe mantener la regla sobre todas; no probar solamente operaciones de una fila. Los fragmentos son material de estudio y no fueron instalados ni ejecutados en las bases del proyecto.
 
-```sql
--- Fragmento dentro de la función, con política de nulidad definida.
-IF NEW.horas_aportadas < OLD.horas_aportadas * 0.90
-   OR NEW.horas_aportadas > OLD.horas_aportadas * 1.10 THEN
-    RAISE EXCEPTION 'La variación de horas supera el 10 por ciento';
-END IF;
-```
+## Fuente de estudio
 
-Explicitar la interpretación. Si cambia tarea, priorizar el reinicio con `IF ... ELSIF ...`: de otro modo el control porcentual podría rechazar el cero obligatorio. Si las horas anteriores son cero, ±10 % solo admite cero. Controlar nulos explícitamente si no se permiten.
-
-## Comprobación de triggers
-
-Para cada regla, preparar al menos un caso válido, uno que deba rechazarse y uno de borde. Probar también un UPDATE de varias filas, nulos y cambios en la tabla relacionada. Comprobar el estado final, no solo el mensaje del motor.
-
-Los ejemplos de esta nota son material de estudio: no fueron instalados en las bases existentes.
+Enunciado del TP4 en la carpeta `../Practicos` y filminas de cátedra `BDI_04 (SQL Procedural).pdf` (carpeta de cursada 2023).

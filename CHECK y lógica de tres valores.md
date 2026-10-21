@@ -38,35 +38,26 @@ Para un prefijo literal `S_`:
 CHECK (cod_suc LIKE 'S!_%' ESCAPE '!')
 ```
 
-El `_` sin escape significa «cualquier carácter». Ver Manejo de strings.
+El `_` sin escape significa «cualquier carácter»: `S_%` también admitiría SA123. El escape obliga a que el segundo carácter sea el guion bajo literal.
 
 ## Restricciones con conteos y ASSERTION
 
-Patrón: **no debe existir un caso infractor**.
+Para prohibir infracciones se escribe una consulta que las detecte y se exige NOT EXISTS. El alcance depende de las filas consultadas, no solo del nombre CHECK o ASSERTION.
 
-```sql
--- SQL estándar del ejercicio; PostgreSQL no admite CREATE ASSERTION.
-CREATE ASSERTION max_15_palabras
-CHECK (NOT EXISTS (
-    SELECT id_articulo
-    FROM contiene
-    GROUP BY id_articulo
-    HAVING COUNT(*) > 15
-));
-```
+[[TP3 - Ejemplos de conteos con CHECK de tabla y ASSERTION|Ejemplos de conteos con CHECK de tabla y ASSERTION]]
 
-Se supone una fila de `contiene` por palabra clave asociada. Si el modelo permite repeticiones, definir qué se cuenta y usar la clave completa correspondiente.
+## Construir una implicación sin exigir demasiado
 
-Para las horas dentro de la tarea, el caso infractor es:
+«Los artículos publicados después de 2020 deben ser argentinos» solo impone nacionalidad a los posteriores a esa fecha. Exigir `fecha_pub >= DATE '2021-01-01' AND nacionalidad = 'Argentina'` sería incorrecto: excluiría todos los artículos anteriores.
 
-```sql
-SELECT v.nro_voluntario
-FROM voluntario v
-JOIN tarea t ON t.id_tarea = v.id_tarea
-WHERE v.horas_aportadas < t.min_horas
-   OR v.horas_aportadas > t.max_horas;
-```
+En `NOT A OR B`, A es «publicado después de 2020» y B es «argentino». Para un artículo de 2019, NOT A es verdadero y el control se satisface sea cual sea su nacionalidad. Para uno de 2022, NOT A es falso y se necesita B. Con nacionalidad NULL, B da UNKNOWN: el CHECK no lo rechaza salvo que se exija información con NOT NULL u otra condición explícita.
 
-La aserción exige que esa consulta esté vacía. Si los nulos están prohibidos, controlarlos además: las comparaciones ordinarias no detectan un nulo como infracción.
+## CHECK agregado según SQL-1999
 
-En PostgreSQL, un `CHECK` no admite una subconsulta y no garantiza controles sobre otras filas usando una función que las consulte. Elegir primero FK/UNIQUE cuando expresen la regla; para controles generales, ver TP4 - Triggers.
+El ejemplo de CHECK de tabla permite contrastar el planteo del estándar con su falta de soporte para subconsultas en PostgreSQL.
+
+[[TP3 - Ejemplos de conteos con CHECK de tabla y ASSERTION|Ejemplos de conteos con CHECK de tabla y ASSERTION]]
+
+## Fuente de estudio
+
+Enunciado del TP3 en la carpeta `../Practicos` y filminas de cátedra `BDI_03.P1 (Restricciones-1).pdf; BDI_03.P1 (Restricciones-2).pdf` (carpeta de cursada 2023).

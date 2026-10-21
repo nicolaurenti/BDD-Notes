@@ -9,46 +9,11 @@ tags:
 
 Una subconsulta es una consulta incluida dentro de otra.
 
-#### IN
+### Pertenencia y existencia
 
-Comprueba si un valor pertenece al resultado:
+IN compara pertenencia; EXISTS pregunta si hay alguna fila y NOT EXISTS si no hay ninguna. La correlación define de qué entidad se está comprobando esa existencia.
 
-```sql
-SELECT *
-FROM voluntario
-WHERE nro_voluntario IN (
-    SELECT nro_voluntario
-    FROM historico
-);
-```
-
-#### EXISTS
-
-Comprueba si la subconsulta devuelve al menos una fila:
-
-```sql
-SELECT *
-FROM institucion i
-WHERE EXISTS (
-    SELECT 1
-    FROM voluntario v
-    WHERE v.id_institucion = i.id_institucion
-);
-```
-
-#### NOT EXISTS
-
-Comprueba que no exista ninguna fila:
-
-```sql
-SELECT *
-FROM institucion i
-WHERE NOT EXISTS (
-    SELECT 1
-    FROM voluntario v
-    WHERE v.id_institucion = i.id_institucion
-);
-```
+[[TP2 - Ejemplos básicos de IN, EXISTS y NOT EXISTS|Ejemplos básicos de IN, EXISTS y NOT EXISTS]]
 
 #### Subconsulta correlacionada
 
@@ -62,85 +27,24 @@ v.id_institucion = i.id_institucion
 
 relaciona la subconsulta con la institución que se está evaluando.
 
-#### Riesgo de NOT IN con NULL
+### Nulidad en IN y NOT IN
 
-```sql
-WHERE nro_voluntario NOT IN (
-    SELECT id_coordinador
-    FROM voluntario
-)
-```
+Un NULL dentro de NOT IN puede impedir confirmar la ausencia de coincidencias. Filtrar nulos o usar NOT EXISTS requiere decidir también qué hacer con nulos exteriores.
 
-Si la subconsulta devuelve algún `NULL`, puede impedir que se seleccionen filas que se esperaban obtener.
+[[TP2 - NOT IN y resultados nulos|NOT IN y resultados nulos]]
 
-Alternativas:
+## Ningún relacionado incumple
 
-- Excluir los nulos de la subconsulta.
-- Expresar la ausencia mediante `NOT EXISTS`.
+Para exigir que no haya incumplimientos se buscan los casos inválidos y se exige su ausencia. Si también se necesita algún relacionado, agregar una prueba de existencia.
 
-#### Ejemplo de NOT IN con nulos
+[[TP2 - Ausencia de incumplimientos con NOT EXISTS|Ausencia de incumplimientos con NOT EXISTS]]
 
-Si `SELECT DISTINCT puntos FROM equipo` devuelve una fila con `NULL`, para una fila exterior con puntos nulos:
+## Razonar la correlación y la ausencia
 
-```sql
-NULL IN (NULL)     -- UNKNOWN
-NULL NOT IN (NULL) -- UNKNOWN
-```
+La correlación vincula la subconsulta con la fila exterior. Sin ella, se evalúa una existencia global en vez de la de cada entidad.
 
-`NOT` no transforma lo desconocido en verdadero. Por eso el `WHERE` no conserva esa fila. Tampoco se trata de que dos valores nulos sean iguales.
+[[TP2 - Correlación y condiciones alguno, ninguno y solo|Correlación y condiciones alguno, ninguno y solo]]
 
-Para un valor no nulo, `5 NOT IN (5, NULL)` es `FALSE`, mientras que `7 NOT IN (5, NULL)` es `UNKNOWN`: el nulo impide confirmar que no hay coincidencia.
+## Fuente de estudio
 
-Filtrar nulos de la subconsulta o usar `NOT EXISTS` requiere decidir también qué se pretende hacer con los nulos de la consulta exterior. No son reemplazos equivalentes automáticamente en presencia de nulos.
-
-Ver Valores NULL y lógica de tres valores.
-
-## Excluir entidades cuando alguna fila relacionada incumple una condición
-
-#### Patrón general
-
-**No existe una fila relacionada que incumpla la condición.**
-
-Ejemplo: instituciones que no poseen voluntarios cuyas horas alcancen o superen el máximo de su tarea:
-
-```sql
-SELECT i.*
-FROM institucion i
-WHERE NOT EXISTS (
-    SELECT 1
-    FROM voluntario v
-    JOIN tarea t
-        ON t.id_tarea = v.id_tarea
-    WHERE v.id_institucion = i.id_institucion
-      AND v.horas_aportadas >= t.max_horas
-);
-```
-
-> [!warning]
-> Buscar una fila que cumpla la condición no garantiza que todas la cumplan. Una institución puede tener simultáneamente voluntarios que cumplen y otros que incumplen.
-
-#### Entidades sin relacionados
-
-`NOT EXISTS` también acepta instituciones sin voluntarios, porque no existe ningún incumplimiento.
-
-Si se exige al menos uno, agregar:
-
-```sql
-AND EXISTS (
-    SELECT 1
-    FROM voluntario v
-    WHERE v.id_institucion = i.id_institucion
-)
-```
-
-#### Tratamiento de NULL
-
-Una comparación como:
-
-```sql
-v.horas_aportadas >= t.max_horas
-```
-
-no resulta verdadera si alguno de los valores es `NULL`.
-
-Si la falta de datos debe considerarse incumplimiento, hay que incluirla explícitamente en la condición que detecta las filas inválidas.
+Enunciado del TP2 en la carpeta `../Practicos` y filminas de cátedra `BDI_02.P1 (Consultas–1).pdf; BDI_02.P2 (Consultas–2).pdf` (carpeta de cursada 2023).

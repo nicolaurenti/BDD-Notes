@@ -5,38 +5,32 @@ tags:
 
 # Auditoría, historial y resúmenes con triggers
 
-## Auditoría por fila y por sentencia
+Estos usos responden preguntas distintas. Una **auditoría** registra quién hizo una operación y cuándo. Un **historial** conserva estados o períodos anteriores. Una **tabla resumen** guarda cantidades o fechas calculadas a partir de otros datos. Elegir el propósito determina qué columnas y eventos hacen falta.
 
-En `HIS_ENTREGA`, guardar como mínimo identificador de registro, fecha, operación, cantidad de filas y usuario. Conviene agregar la tabla de origen para distinguir ENTREGA de RENGLON_ENTREGA.
+## Auditoría por fila
 
-| Diseño | Sentencia que afecta 5 filas |
-|---|---|
-| AFTER ROW | 5 registros de auditoría, normalmente con cantidad 1 |
-| AFTER STATEMENT | 1 registro con cantidad 5, si se implementa ese conteo |
+Una auditoría ROW registra una entrada por fila afectada. Debe identificar operación, fecha, usuario y tabla de origen; cada ejecución representa una fila.
 
-No usar `COUNT(*) FROM entrega` como «filas afectadas»: cuenta la tabla completa. Tampoco `GET DIAGNOSTICS ROW_COUNT` representa automáticamente las filas de la sentencia disparadora.
+[[TP4 - Ejemplo de auditoría por fila en HIS_ENTREGA|Ejemplo de auditoría por fila en HIS_ENTREGA]]
 
-Para contar en triggers de sentencia pueden usarse tablas de transición en triggers AFTER compatibles:
+## Qué cambia con STATEMENT
 
-```sql
--- Fragmento de cabecera para UPDATE; la función se define aparte.
--- AFTER UPDATE ON entrega
--- REFERENCING OLD TABLE AS anteriores NEW TABLE AS nuevas
--- FOR EACH STATEMENT EXECUTE FUNCTION auditar_update_entrega();
-```
+STATEMENT registra una actuación por sentencia. La cantidad de filas afectadas requiere un mecanismo de conteo adicional: no se obtiene cambiando la cabecera del trigger ROW.
 
-La función cuenta `nuevas` para UPDATE. INSERT y DELETE requieren sus propias relaciones de transición y cabeceras. Analizar también los eventos que provocan las cascadas de FK. La auditoría normal participa en la misma transacción: si esta se revierte, sus registros también.
+[[TP4 - Auditoría STATEMENT y conteo de filas afectadas|Auditoría STATEMENT y conteo de filas afectadas]]
 
-## Historial, resúmenes y carga inicial
+## Historial de permanencias
 
-Para permanencias por departamento, guardar ingreso y cada intervalo de asignación; identificar el departamento con su clave completa `(id_distribuidor, id_departamento)`. Al cambiar de departamento, cerrar el intervalo anterior y abrir el siguiente. Decidir si un intervalo abierto participa del promedio y cómo se calcula su duración.
+Un historial conserva intervalos y no solo el estado actual. Las duraciones de períodos abiertos crecen aunque no ocurran escrituras, por lo que conviene conservar fechas y definir cómo se calcula el promedio.
 
-Para `TextosporAutor`:
+[[TP4 - Ejemplo de historial de permanencias|Ejemplo de historial de permanencias]]
 
-1. Carga inicial con `INSERT ... SELECT autor, COUNT(*), MAX(fecha_pub) FROM articulo GROUP BY autor` sobre una tabla resumen inicialmente vacía.
-2. Mantenimiento ante INSERT, UPDATE y DELETE.
-3. En un cambio de autor, actualizar el autor anterior y el nuevo.
-4. Si se borra el artículo más reciente, recalcular el máximo; no basta con restar uno al conteo.
-5. Definir qué hacer con autores sin artículos y cómo evitar duplicados al repetir una carga.
+## Resúmenes y datos preexistentes
 
-Un trigger instalado hoy no conoce fechas históricas que nunca se registraron. Un total de permanencia que crece con el tiempo no se mantiene exacto únicamente con triggers de escritura; puede calcularse al consultar los intervalos.
+La carga inicial reconstruye el resumen de los datos existentes. Su mantenimiento posterior debe contemplar inserciones, bajas y cambios de autor o fecha; instalar un trigger no reconstruye el pasado.
+
+[[TP4 - Ejemplo de carga y mantenimiento de TextosporAutor|Ejemplo de carga y mantenimiento de TextosporAutor]]
+
+## Fuente de estudio
+
+Enunciado del TP4 en la carpeta `../Practicos` y filminas de cátedra `BDI_04 (SQL Procedural).pdf` (carpeta de cursada 2023).

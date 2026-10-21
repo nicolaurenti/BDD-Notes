@@ -32,120 +32,28 @@ OFFSET desplazamiento;
 
 ## Orden lógico de ejecución
 
-El orden lógico para interpretar una consulta es:
+Las filas de origen se filtran antes de agrupar; HAVING filtra grupos y SELECT produce la salida. El orden lógico explica qué expresiones se pueden usar en cada cláusula.
 
-1. `FROM` y `JOIN`: construir las filas de origen.
-2. `WHERE`: filtrar filas.
-3. `GROUP BY`: formar grupos.
-4. Calcular las agregaciones.
-5. `HAVING`: filtrar grupos.
-6. `SELECT`: producir las columnas del resultado.
-7. `DISTINCT`: eliminar filas repetidas.
-8. `ORDER BY`: ordenar.
-9. `OFFSET` y `LIMIT`: seleccionar la porción del resultado.
-
-> [!important]
-> Este es el orden lógico. El motor puede utilizar otro orden físico para ejecutar la consulta de manera más eficiente.
-
-#### Consecuencias
-
-- `WHERE` no puede filtrar por una agregación calculada en ese mismo nivel.
-- Los alias definidos en `SELECT` pueden usarse en `ORDER BY`, pero no en `WHERE` ni en `HAVING` en PostgreSQL.
-
-```sql
-SELECT id_institucion, COUNT(*) AS cantidad
-FROM voluntario
-GROUP BY id_institucion
-HAVING COUNT(*) > 10
-ORDER BY cantidad DESC;
-```
+[[TP2 - Orden lógico de una consulta paso a paso|Orden lógico de una consulta paso a paso]]
 
 ## DISTINCT
 
-Elimina filas repetidas del resultado.
+DISTINCT elimina repeticiones de la fila completa seleccionada. No elige un valor distinto por columna ni corrige una unión mal planteada.
 
-```sql
-SELECT DISTINCT id_tarea
-FROM voluntario;
-```
-
-Si se seleccionan varias columnas, se consideran las **combinaciones completas**:
-
-```sql
-SELECT DISTINCT id_institucion, id_tarea
-FROM voluntario;
-```
-
-Una misma institución puede aparecer varias veces si está asociada con tareas diferentes.
-
-#### COUNT con DISTINCT
-
-```sql
-SELECT COUNT(DISTINCT id_tarea)
-FROM voluntario;
-```
-
-Cuenta tareas diferentes, excluyendo los valores nulos.
-
-> [!warning]
-> `DISTINCT` no corrige un join mal planteado. Primero hay que comprobar por qué se repiten las filas.
-
-#### DISTINCT y valores nulos
-
-Con cuatro filas cuyos puntos son nulos:
-
-```sql
-SELECT DISTINCT puntos FROM equipo;
-```
-
-Devuelve **una fila con `NULL`**. En cambio, `COUNT(DISTINCT puntos)` devuelve **0**, porque el conteo excluye los nulos.
-
-La eliminación de duplicados no usa el mismo criterio que una comparación ordinaria: `NULL = NULL` sigue dando `UNKNOWN`.
-
-Ver Valores NULL y lógica de tres valores.
+[[TP2 - DISTINCT y combinaciones de columnas|DISTINCT y combinaciones de columnas]]
 
 ## Ordenamiento, primeros N y paginación
 
-#### Ordenamiento
+ORDER BY define la presentación. LIMIT y OFFSET seleccionan una porción de ese resultado; una clave adicional permite resolver empates y paginar de forma estable.
 
-```sql
-SELECT nombre, apellido, horas_aportadas
-FROM voluntario
-ORDER BY horas_aportadas DESC, nro_voluntario ASC;
-```
+[[TP2 - Ordenamiento, primeros N y paginación|Ordenamiento, primeros N y paginación]]
 
-- `ASC`: ascendente.
-- `DESC`: descendente.
-- Los criterios posteriores resuelven empates de los anteriores.
-- `NULLS FIRST` y `NULLS LAST` permiten ubicar explícitamente los nulos.
+## Caso trabajado de agrupamiento
 
-#### Primeros N
+El caso de instituciones y horas permite comprobar cómo WHERE y HAVING cambian el resultado.
 
-```sql
-SELECT *
-FROM voluntario
-ORDER BY horas_aportadas DESC NULLS LAST,
-         nro_voluntario
-LIMIT 5;
-```
+[[TP2 - Orden lógico de una consulta paso a paso|Orden lógico de una consulta paso a paso]]
 
-Devuelve cinco filas como máximo. Si hay empate en el límite, no necesariamente incluye a todos los empatados.
+## Fuente de estudio
 
-#### Paginación
-
-```text
-OFFSET = (número de página - 1) × tamaño de página
-```
-
-Tercera página con cinco registros por página:
-
-```sql
-SELECT *
-FROM tarea
-ORDER BY id_tarea
-LIMIT 5
-OFFSET 10;
-```
-
-> [!warning]
-> Para paginar de forma estable se necesita un `ORDER BY` que determine un orden completo, utilizando una clave para resolver empates.
+Enunciado del TP2 en la carpeta `../Practicos` y filminas de cátedra `BDI_02.P1 (Consultas–1).pdf; BDI_02.P2 (Consultas–2).pdf` (carpeta de cursada 2023).

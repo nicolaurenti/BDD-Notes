@@ -22,3 +22,17 @@ Dos operaciones entran en conflicto si pertenecen a transacciones distintas, acc
 Ejemplo: `w1(A), r2(A), w2(B), r3(B)` genera T1 → T2 → T3. Si además una operación de T3 precede a una operación conflictiva de T1, aparece un ciclo.
 
 No agregar aristas solo porque una transacción empieza antes. No concluir que un ciclo descarta cualquier otra noción de equivalencia: el criterio del grafo es por conflictos.
+
+## Un ejemplo con y sin ciclo
+
+Más aristas no implica necesariamente un ciclo. El caso trabajado muestra qué conflicto adicional cierra uno y cómo obtener órdenes seriales cuando no lo hay.
+
+[[TP8 - Ejemplos de grafos con y sin ciclo|Ejemplos de grafos con y sin ciclo]]
+
+## Revisar todos los ítems
+
+Para el ejercicio 2, hacer una lista por A, B, C, D y E y extraer los conflictos entre transacciones diferentes. Dos lecturas de A no generan arista, aunque ocurran muy separadas. Dos operaciones de T1 no generan una arista de T1 a sí misma. Después unir las aristas obtenidas: un ciclo puede formarse con conflictos sobre ítems distintos.
+
+## Fuente de estudio
+
+Enunciado del TP8 en la carpeta `../Practicos` y filminas de cátedra `BDI_08 (Proc_Transacciones).pdf` (carpeta de cursada 2023).

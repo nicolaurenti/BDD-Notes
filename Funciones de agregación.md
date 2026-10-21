@@ -31,161 +31,30 @@ Si existen cuatro filas y todas tienen `puntos = NULL`:
 
 Sin filas de entrada y sin `GROUP BY`, `COUNT` devuelve `0`; las demás agregaciones de esta tabla devuelven `NULL`.
 
-#### COALESCE: reemplazar el resultado o los datos de entrada
+## Promedios y reemplazo de NULL
 
-Para mostrar cero cuando el promedio es nulo (ejercicio 2.1.b):
+Reemplazar el resultado nulo de AVG no equivale a convertir cada entrada nula en cero: cambia el denominador del promedio.
 
-```sql
-SELECT COALESCE(AVG(puntos), 0) AS promedio,
-       COUNT(puntos) AS cantidad_puntos,
-       COUNT(*) AS cantidad_filas
-FROM equipo;
-```
-
-Con cuatro filas cuyos puntos son nulos devuelve `0 | 0 | 4`. Los conteos ya devuelven cero cuando no hay valores para contar; no necesitan `COALESCE`.
-
-Estas expresiones tienen significados diferentes:
-
-```sql
-COALESCE(AVG(puntos), 0) -- Sustituye el resultado si el promedio es NULL.
-AVG(COALESCE(puntos, 0)) -- Convierte cada punto NULL en cero antes de promediar.
-```
-
-Con puntos `10, NULL`, la primera devuelve **10** y la segunda **5**. Sobre una entrada sin filas, la segunda sigue devolviendo `NULL`, porque no hay filas sobre las que aplicar `COALESCE`.
-
-Si se necesita un blanco en la salida, hay que convertir el promedio a texto:
-
-```sql
-SELECT COALESCE(CAST(AVG(puntos) AS text), '') AS promedio
-FROM equipo;
-```
-
-Ver Valores NULL y lógica de tres valores.
+[[TP2 - COALESCE antes y después del promedio|COALESCE antes y después del promedio]]
 
 ## GROUP BY y HAVING
 
-`GROUP BY` reúne filas que tienen los mismos valores en las columnas indicadas.
+GROUP BY define qué filas se resumen juntas. WHERE decide cuáles entran y HAVING cuáles grupos permanecen. Agrupar por institución no equivale a agrupar por institución y coordinador.
 
-```sql
-SELECT id_institucion, COUNT(*) AS cantidad
-FROM voluntario
-GROUP BY id_institucion;
-```
+[[TP2 - Agrupamiento y filtro de grupos|Agrupamiento y filtro de grupos]]
 
-Como regla general, cada expresión seleccionada debe estar agrupada o calculada mediante una agregación.
+## Cálculos sobre subconjuntos y totales
 
-#### WHERE y HAVING
+Un promedio mide valores; un porcentaje relaciona cantidades. Elegir el subconjunto del numerador y el total del denominador es parte de traducir la consigna.
 
-- `WHERE`: filtra filas antes de agrupar.
-- `HAVING`: filtra grupos después de calcular las agregaciones.
+[[TP2 - Promedios, porcentajes y comparación con totales|Promedios, porcentajes y comparación con totales]]
 
-Instituciones con más de diez voluntarios que aportaron más de 1000 horas:
+## Contar lo que pide el enunciado
 
-```sql
-SELECT id_institucion, COUNT(*) AS cantidad
-FROM voluntario
-WHERE horas_aportadas > 1000
-GROUP BY id_institucion
-HAVING COUNT(*) > 10;
-```
+Si un voluntario tiene tres registros históricos con tareas A, A y B, `COUNT(*)` da 3 y `COUNT(DISTINCT id_tarea)` da 2. La primera cantidad representa registros o períodos; la segunda, tareas diferentes. Ninguna demuestra por sí sola cuántas veces cambió de tarea: para hablar de cambios debe estar definido cómo cada registro representa un período o una transición.
 
-#### Agrupar por varias columnas
+En una institución con voluntarios `(coordinador 10, persona 1)`, `(10, 2)` y `(20, 3)`, agrupar solo por institución produce cantidad 3. Agrupar por institución y coordinador produce los grupos de tamaños 2 y 1. Para «coordinadores con menos de 3 voluntarios dentro de cada institución», la clave del grupo debe contener ambas columnas.
 
-Cantidad de voluntarios por institución y coordinador:
+## Fuente de estudio
 
-```sql
-SELECT
-    id_institucion,
-    id_coordinador,
-    COUNT(*) AS cantidad
-FROM voluntario
-WHERE id_coordinador IS NOT NULL
-GROUP BY id_institucion, id_coordinador
-HAVING COUNT(*) < 3;
-```
-
-#### Agrupar por identificadores
-
-Agrupar solamente por nombre puede mezclar entidades diferentes que se llaman igual.
-
-Conviene agrupar por la clave y, cuando corresponda, por las columnas descriptivas seleccionadas.
-
-## Promedio de filas que cumplen una condición
-
-#### Filtrar antes de calcular el promedio
-
-Promedio de horas de los voluntarios que aportaron más de 1000 horas:
-
-```sql
-SELECT AVG(horas_aportadas)
-FROM voluntario
-WHERE horas_aportadas > 1000;
-```
-
-#### Promedio condicional conservando otros datos
-
-```sql
-SELECT
-    id_institucion,
-    COUNT(*) AS total_voluntarios,
-    AVG(horas_aportadas)
-        FILTER (WHERE horas_aportadas > 1000)
-        AS promedio_mayores_a_1000
-FROM voluntario
-GROUP BY id_institucion;
-```
-
-`FILTER` afecta solamente a la agregación donde aparece.
-
-#### Alternativa con CASE
-
-```sql
-SELECT AVG(
-    CASE
-        WHEN horas_aportadas > 1000
-        THEN horas_aportadas
-    END
-)
-FROM voluntario;
-```
-
-Cuando no se cumple la condición, el `CASE` devuelve `NULL`, que `AVG` ignora.
-
-> [!warning]
-> Agregar `ELSE 0` cambia el cálculo: las filas que no cumplen la condición pasan a participar del promedio como ceros.
-
-#### Promedio y porcentaje no son lo mismo
-
-Para calcular el porcentaje de voluntarios que cumplen una condición:
-
-```sql
-SELECT
-    100.0 * COUNT(*) FILTER (WHERE horas_aportadas > 1000)
-    / NULLIF(COUNT(*), 0) AS porcentaje
-FROM voluntario;
-```
-
-- `100.0` evita la división entera.
-- `NULLIF` evita dividir por cero.
-
-## Comparación con totales y porcentajes
-
-Instituciones con menos del 10 % de los voluntarios registrados:
-
-```sql
-SELECT id_institucion, COUNT(*) AS cantidad
-FROM voluntario
-WHERE id_institucion IS NOT NULL
-GROUP BY id_institucion
-HAVING COUNT(*) < (
-    SELECT COUNT(*) * 0.10
-    FROM voluntario
-);
-```
-
-La subconsulta calcula el total general; el agrupamiento calcula la cantidad por institución.
-
-> [!important]
-> Definir correctamente el denominador: total de personas, total de tareas distintas o total de registros no significan lo mismo.
-
-Este ejemplo considera instituciones con al menos un voluntario. Para incluir las que tienen cero, hay que partir de `institucion` y utilizar un `LEFT JOIN`.
+Enunciado del TP2 en la carpeta `../Practicos` y filminas de cátedra `BDI_02.P1 (Consultas–1).pdf; BDI_02.P2 (Consultas–2).pdf` (carpeta de cursada 2023).

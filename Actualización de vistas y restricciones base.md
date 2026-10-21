@@ -16,19 +16,18 @@ Para una escritura sobre una vista hay que decidir:
 
 Que una vista sea actualizable no garantiza que cualquier INSERT funcione. Por ejemplo, una columna obligatoria omitida en la vista puede impedir insertar si no tiene un valor por defecto.
 
-## Criterio de cátedra y comportamiento PostgreSQL
+## Distinguir los dos criterios de la consigna
 
-Las filminas presentan como criterio para vistas simples: conservar la clave, evitar DISTINCT, agregaciones, información derivada y subconsultas en la lista SELECT. Para ensambles, analizan preservación de clave mediante relaciones FK→PK.
+La consigna pide justificar por separado con los criterios SQL-1999 de las filminas y las condiciones de PostgreSQL. Proyectar la PK y usar un join no reciben el mismo tratamiento en ambos análisis.
 
-No trasladar esas reglas sin más al motor: en PostgreSQL una vista simple puede ser automáticamente actualizable aunque no proyecte toda la PK; la operación concreta todavía debe poder satisfacer las restricciones de la base.
+[[TP5 - Comparar actualizabilidad SQL-1999 y PostgreSQL|Comparar actualizabilidad SQL-1999 y PostgreSQL]]
 
-| Construcción | Guía para PostgreSQL |
-|---|---|
-| Una tabla o vista actualizable en FROM; columnas directas | Habitualmente actualizable |
-| Subconsulta en WHERE con columnas directas de una sola tabla exterior | Puede ser actualizable |
-| JOIN de varias tablas en FROM | No se actualiza automáticamente |
-| DISTINCT, GROUP BY, HAVING o agregados en el nivel principal | No se actualiza automáticamente |
-| UNION, INTERSECT o EXCEPT en el nivel principal | No se actualiza automáticamente |
-| Columna calculada | Esa columna no es automáticamente escribible; puede haber otras que sí lo sean |
+## Validez de la escritura concreta
 
-También hay limitaciones con LIMIT/OFFSET, ventanas y otras construcciones. Ver [condiciones de vistas actualizables en PostgreSQL](https://www.postgresql.org/docs/current/sql-createview.html#SQL-CREATEVIEW-UPDATABLE-VIEWS).
+La actualizabilidad de la vista y la validez de una escritura son preguntas distintas. Una operación puede fallar por obligatoriedad, unicidad o referencia aunque la vista admita ese tipo de operación.
+
+[[TP5 - Ejemplo de INSERT rechazado en una vista actualizable|Ejemplo de INSERT rechazado en una vista actualizable]]
+
+## Fuente de estudio
+
+Enunciado del TP5 en la carpeta `../Practicos` y filminas de cátedra `BDI_05 (Vistas).pdf` (carpeta de cursada 2023).

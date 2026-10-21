@@ -5,6 +5,8 @@ tags:
 
 # Práctico 8 — Concurrencia y recuperación
 
+El práctico reúne dos problemas: que las transacciones concurrentes no produzcan interferencias inválidas y que una falla no deje efectos incompatibles con sus confirmaciones. Los ejemplos siguen schedules, bloqueos y el modelo de log y checkpoint presentado en las filminas.
+
 ## 1. [[Transacciones y propiedades ACID]]
 
 ## 2. [[Schedules y anomalías de concurrencia]]
@@ -33,14 +35,20 @@ tags:
 - [ ] Detectar conflictos y armar el grafo de precedencia completo.
 - [ ] Obtener órdenes topológicos o justificar ciclos.
 - [ ] Simular esperas y detectar adquisición posterior al primer unlock.
-- [ ] Diferenciar 2PL básico, estricto y riguroso.
+- [ ] Verificar las dos fases y distinguir espera, deadlock e inanición.
 - [ ] Separar serializabilidad, recuperabilidad y deadlock.
-- [ ] Explicar MVCC y niveles reales de PostgreSQL.
+- [ ] Distinguir niveles del estándar y comportamiento PostgreSQL según el material.
 - [ ] Distinguir valor anterior/nuevo, COMMIT y páginas persistidas.
 - [ ] Relacionar STEAL/FORCE con UNDO/REDO.
 - [ ] Evaluar checkpoints y cortes usando solo el prefijo disponible.
 
-## Material
+## Conocimientos anteriores
 
-- Enunciado principal: `../Practicos/Practico 8 - Concurrencia y Recuperacion.docx`.
 - Relacionados: TP4 - Triggers, TP3 - Restricciones de integridad, TP7 - Optimización.
+
+## Criterio de estudio y fuentes
+
+Las explicaciones se apoyan en este práctico y los anteriores. Se conserva la sintaxis de la cátedra; las diferencias de PostgreSQL se tratan por separado cuando las pide la consigna. Los ejemplos de teoría son didácticos y no sustituyen la resolución personal.
+
+- Enunciado local: `../Practicos/Practico 8 - Concurrencia y Recuperacion.docx`.
+- Filminas cotejadas: `BDI_08 (Proc_Transacciones).pdf`, en `../Contenido extra/Filminas y Practicos de cursada/2023/`.

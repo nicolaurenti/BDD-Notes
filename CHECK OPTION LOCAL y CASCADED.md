@@ -31,4 +31,14 @@ WITH LOCAL CHECK OPTION;
 | CC_REP, máximo 9000, en tarea10000rep | Rechaza: incumple el WCO de la vista inferior |
 | ROM, máximo 12000, en tarea10000hs | Pasa los filtros; confirmar las demás restricciones |
 
-Si la vista inferior no tuviera WCO, LOCAL en la superior no agregaría por sí solo el control del filtro inferior. CASCADED sí lo haría. [Semántica oficial de CHECK OPTION](https://www.postgresql.org/docs/current/sql-createview.html).
+Si la vista inferior no tuviera WCO, LOCAL en la superior no agregaría por sí solo el control del filtro inferior. CASCADED sí lo haría.
+
+## Comparar combinaciones de chequeos
+
+La diferencia se observa cuando la vista inferior no tiene WCO propio. Si ya lo tiene, LOCAL en la superior no desactiva el control inferior.
+
+[[TP5 - Ejemplos de diferencias entre LOCAL y CASCADED|Ejemplos de diferencias entre LOCAL y CASCADED]]
+
+## Fuente de estudio
+
+Enunciado del TP5 en la carpeta `../Practicos` y filminas de cátedra `BDI_05 (Vistas).pdf` (carpeta de cursada 2023).

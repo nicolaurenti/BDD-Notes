@@ -5,6 +5,8 @@ tags:
 
 # Práctico 6 — Seguridad y control de acceso
 
+El objetivo es determinar quién puede realizar cada operación y quién puede conceder ese permiso. Las notas siguen el grafo de concesiones, las revocaciones y los roles usando los comandos y dependencias que presenta la cátedra.
+
 ## 1. [[Usuarios, roles, objetos y privilegios]]
 
 ## 2. [[GRANT y WITH GRANT OPTION]]
@@ -42,7 +44,13 @@ Los comandos son ejemplos de estudio; no se modificaron roles ni permisos reales
 - [ ] Calcular acceso por roles y PUBLIC.
 - [ ] Revisar esquema y objetos auxiliares.
 
-## Material
+## Conocimientos anteriores
 
-- Enunciado principal: `../Practicos/Practico 6 - Seguridad.docx`.
 - Relacionados: TP5 - Vistas, TP4 - Triggers.
+
+## Criterio de estudio y fuentes
+
+Las explicaciones se apoyan en este práctico y los anteriores. Se conserva la sintaxis de la cátedra; las diferencias de PostgreSQL se tratan por separado cuando las pide la consigna. Los ejemplos de teoría son didácticos y no sustituyen la resolución personal.
+
+- Enunciado local: `../Practicos/Practico 6 - Seguridad.docx`.
+- Filminas cotejadas: `BDI_06 (Seguridad).pdf`, en `../Contenido extra/Filminas y Practicos de cursada/2023/`.

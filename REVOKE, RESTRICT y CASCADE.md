@@ -22,4 +22,20 @@ ON TABLE instalacion FROM adm CASCADE;
 
 Si se otorgó `UPDATE ON instalacion`, revocar `UPDATE(tarea)` no elimina el permiso sobre esa columna que sigue cubierto por el UPDATE de toda la tabla.
 
-Para dejar acceso solo a ciertas columnas, retirar la concesión amplia correspondiente y conceder el subconjunto permitido, revisando permisos alternativos y dependencias. Por eso, en el ejercicio 1, no asumir que revocar la columna `tarea` a adm elimina el UPDATE de tabla que recibió al comienzo. [REVOKE y permisos a nivel de columna](https://www.postgresql.org/docs/current/sql-revoke.html).
+Para dejar acceso solo a ciertas columnas, retirar la concesión amplia correspondiente y conceder el subconjunto permitido, revisando permisos alternativos y dependencias. Por eso, en el ejercicio 1, no asumir que revocar la columna `tarea` a adm elimina el UPDATE de tabla que recibió al comienzo.
+
+## Comparar tres revocaciones sobre la misma cadena
+
+RESTRICT rechaza dependencias que quedarían sin fundamento. CASCADE retira concesiones dependientes. GRANT OPTION FOR puede quitar delegación conservando el permiso de uso.
+
+[[TP6 - Ejemplo comparado de RESTRICT, CASCADE y GRANT OPTION FOR|Ejemplo comparado de RESTRICT, CASCADE y GRANT OPTION FOR]]
+
+## Tabla y columna no son permisos negativos
+
+Si adm recibió UPDATE de toda INSTALACION, revocar `UPDATE(tarea)` no introduce una prohibición sobre esa columna. El permiso amplio sigue cubriéndola. Para analizar el ejercicio 1, registrar el nivel exacto de la concesión original antes de interpretar la revocación.
+
+Si el objetivo fuera dejar a adm solo cantHoras, haría falta retirar el permiso amplio correspondiente y volver a conceder el restringido, considerando las delegaciones que dependían de él. Una revocación cambia concesiones: no sustituye esa secuencia por una regla de «denegación de columna».
+
+## Fuente de estudio
+
+Enunciado del TP6 en la carpeta `../Practicos` y filminas de cátedra `BDI_06 (Seguridad).pdf` (carpeta de cursada 2023).
