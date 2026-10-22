@@ -2,103 +2,39 @@
 tags:
   - tp4
 ---
-EJ1
-EJ2
-a)
-```mysql
 
-/* Creación de tabla */
-CREATE TABLE his_entrega (
-    nro_registro NUMERIC(4,0),
-    fecha DATE NOT NULL,
-    operacion VARCHAR(120) NOT NULL,
-    cant_reg_afectados NUMERIC(4,0) NOT NULL,
-    usuario VARCHAR(120) NOT NULL,
+# Resolución del TP4 - Triggers
 
-    CONSTRAINT pk_his_entrega
-        PRIMARY KEY (nro_registro)
-);
+Resolución de los ejercicios **1, 2 y 3**, con grillas, implementaciones, pruebas y resultados. El ejercicio 2 parte de tu borrador: se corrigió el segundo `ON entrega` para actuar sobre `renglon_entrega`; la versión previa permanece en el historial Git.
 
-/* Trigger entrega */
-CREATE OR REPLACE FUNCTION mantenimiento_his_entrega_entr()
-RETURNS trigger AS $$
-DECLARE
-    nuevo_nro NUMERIC(4,0);
-BEGIN
-    SELECT COALESCE(MAX(nro_registro), 0) + 1
-    INTO nuevo_nro
-    FROM his_entrega;
+## Ejercicios resueltos
 
-    INSERT INTO his_entrega (
-        nro_registro,
-        fecha,
-        operacion,
-        cant_reg_afectados,
-        usuario
-    )
-    VALUES (
-        nuevo_nro,
-        CURRENT_DATE,
-        TG_OP,
-        1,
-        CURRENT_USER
-    );
+- [[TP4 - Resolución del ejercicio 1|1 — Restricciones procedurales del TP3]].
+- [[TP4 - Resolución del ejercicio 2|2 — Auditoría de ENTREGA y RENGLON_ENTREGA]].
+- [[TP4 - Resolución del ejercicio 3|3 — Simulación de sueldos ROW y STATEMENT]].
 
-    RETURN NULL;
-END;
-$$ LANGUAGE 'plpgsql';
+## Para probar en DataGrip
 
-CREATE TRIGGER tr_mantenimiento_his_entrega_entr
-AFTER INSERT OR UPDATE OR DELETE ON entrega
-FOR EACH ROW
-EXECUTE PROCEDURE mantenimiento_his_entrega_entr();
+Antes de ejecutar SQL, comprobar conexión y esquema:
 
-/* Trigger renglon_entrega */
-CREATE OR REPLACE FUNCTION mantenimiento_his_entrega_renglon_entr()
-RETURNS trigger AS $$
-DECLARE
-    nuevo_nro NUMERIC(4,0);
-BEGIN
-    SELECT COALESCE(MAX(nro_registro), 0) + 1
-    INTO nuevo_nro
-    FROM his_entrega;
-
-    INSERT INTO his_entrega (
-        nro_registro,
-        fecha,
-        operacion,
-        cant_reg_afectados,
-        usuario
-    )
-    VALUES (
-        nuevo_nro,
-        CURRENT_DATE,
-        TG_OP,
-        1,
-        CURRENT_USER
-    );
-
-    RETURN NULL;
-END;
-$$ LANGUAGE 'plpgsql';
-
-CREATE TRIGGER tr_mantenimiento_his_entrega_renglon_entr
-AFTER INSERT OR UPDATE OR DELETE ON entrega
-FOR EACH ROW
-EXECUTE PROCEDURE mantenimiento_his_entrega_renglon_entr();
+```sql
+SELECT current_database(), current_schema();
 ```
-b)
 
-EJ3
-EJ4
-EJ5
-EJ6
-# Resolución del TP4 — Triggers
+Artículos usa las tablas del TP3; Voluntarios y Películas son bases distintas con esquema `public`. No ejecutar todos los scripts en una misma conexión. Las tablas y triggers se instalan una sola vez en un esquema de práctica con el modelo base ya creado. Las variantes ROW y STATEMENT del ejercicio 2 son alternativas: no se instalan juntas.
 
-## Resolución
+Los scripts están también en `/Users/nicolaurenti/DataGripProjects/FinalBases/resoluciones_tp4`. El SQL completo queda incluido en las notas hijas para leerlo desde la tablet.
 
-Pendiente de completar.
+## Validación
+
+**65 casos distintos pasaron en una instancia temporal aislada de PostgreSQL.** Se comprobaron base, esquema y directorio de datos antes de cada lote. Se usaron datos controlados, no las instancias existentes del proyecto. Las pruebas de modificación se revirtieron; tus bases habituales no se modificaron.
+
+Las comprobaciones se hicieron secuencialmente. Los identificadores de auditoría usan `MAX + 1`, sin secuencias, con ese supuesto. Se mantiene el manejo de NULL de las comparaciones declarativas, salvo la política de cambios de institución que se declara expresamente.
+
+## Pendientes
+
+Los ejercicios 4, 5 y 6 del TP4 quedan pendientes.
 
 ## Material
 
-- Enunciado: `../Practicos/Practico 4 - Acciones Procedurales.docx`.
+`../Practicos/Practico 4 - Acciones Procedurales.docx` y `Practico 3 - Restricciones de Integridad Declarativas.docx`. Filminas `BDI_04 (SQL Procedural).pdf` de la cátedra.
