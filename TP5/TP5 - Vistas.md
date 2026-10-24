@@ -68,7 +68,9 @@ Una vista también puede definirse con un `JOIN`, por ejemplo para mostrar cada 
 
 ### Dudas de la conversación
 
-Todavía no registramos dudas específicas. Las incorporaremos aquí junto con sus respuestas a medida que conversemos este tema.
+**Si agregamos a `envio` un envío de 900 unidades, ¿hay que volver a crear la vista?**
+
+No. Como el nuevo envío cumple `cantidad >= 500`, aparece la próxima vez que consultamos `envios500`, sin volver a crearla. La definición de la vista sigue siendo la misma; lo que cambió son los datos de la tabla base. Crear la vista no fija sus resultados en el momento de creación.
 
 ## 2. [[Actualización de vistas y restricciones base]]
 
