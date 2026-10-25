@@ -5,13 +5,12 @@ tags:
 
 # Especialización y jerarquías
 
-
 Una forma de representar una especialización es crear:
 
 - Una tabla para el **supertipo**, con los atributos comunes.
 - Una tabla para cada **subtipo**, con sus atributos específicos.
 
-### Ejemplo de grabaciones
+## Ejemplo de grabaciones
 
 | Tabla | Contenido |
 |---|---|

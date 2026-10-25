@@ -5,7 +5,6 @@ tags:
 
 # Claves extranjeras compuestas
 
-
 Cuando se referencia una clave compuesta, la FK debe incluir **todas sus columnas**, con tipos compatibles y en el orden correspondiente.
 
 ```sql

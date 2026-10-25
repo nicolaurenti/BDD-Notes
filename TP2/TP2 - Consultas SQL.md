@@ -9,35 +9,35 @@ El objetivo es traducir cada enunciado a una consulta y poder explicar por qué 
 
 Los contenidos están agrupados en ocho bloques para estudiar temas relacionados juntos. Cada bloque corresponde a una única nota del mapa.
 
-## 1. [[Estructura general de una consulta|Estructura, ejecución y presentación de resultados]]
+## 1. [[Estructura general de una consulta]]
 
 SELECT, orden lógico, DISTINCT, ORDER BY, primeros N y paginación.
 
-## 2. [[Condiciones y operadores|Condiciones, textos y fechas]]
+## 2. [[Condiciones y operadores]]
 
 Comparaciones, AND/OR/NOT, patrones de texto, funciones de strings, fechas y edades.
 
-## 3. [[Valores NULL y lógica de tres valores|Valores NULL y lógica de tres valores]]
+## 3. [[Valores NULL y lógica de tres valores]]
 
 UNKNOWN, IS NULL, COALESCE y resultados del ejercicio 2.1.
 
-## 4. [[Funciones de agregación|Agregaciones, agrupamiento y porcentajes]]
+## 4. [[Funciones de agregación]]
 
 COUNT/SUM/AVG, GROUP BY/HAVING, promedios condicionales y comparación con totales.
 
-## 5. [[Diferencias entre joins|Joins y conteos de filas relacionadas]]
+## 5. [[Diferencias entre joins]]
 
 INNER/OUTER JOIN, autojoins, filtros en ON/WHERE y conteos sin duplicaciones.
 
-## 6. [[Subconsultas|Subconsultas y condiciones de ausencia]]
+## 6. [[Subconsultas]]
 
 IN, EXISTS, NOT EXISTS y exclusión de entidades cuando existe un incumplimiento.
 
-## 7. [[Operadores de conjuntos|Operadores de conjuntos]]
+## 7. [[Operadores de conjuntos]]
 
 UNION, INTERSECT, EXCEPT, ALL y visualización de entradas y resultados.
 
-## 8. [[Consultas con “todos”|Consultas con “todos”]]
+## 8. [[Consultas con “todos”]]
 
 División relacional y patrón de doble NOT EXISTS.
 

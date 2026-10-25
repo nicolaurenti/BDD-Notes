@@ -428,8 +428,6 @@ En la segunda interpretación, 3.d limita a todos a 15 y 3.e limita específicam
 
 ## Ejercicio 4 — Restricciones sobre proveedores y productos
 
-### Clasificación
-
 | Apartado | Tablas | Atributos relevantes | Tipo | Recurso |
 |---|---|---|---|---|
 | a | Provee | nro_prov, cod_producto | Tabla | CHECK con subconsulta |
@@ -514,8 +512,6 @@ Es general porque consulta tres tablas. Se elige exigir localidades conocidas pa
 El control también debe mantenerse si cambia la localidad del proveedor o de la sucursal, aunque no se modifique Provee. Se suponen las FK del esquema.
 
 ## Ejercicio 5 — Restricciones sobre voluntarios
-
-### Clasificación
 
 | Apartado | Tablas | Atributos relevantes | Tipo | Recurso |
 |---|---|---|---|---|

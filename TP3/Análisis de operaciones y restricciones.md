@@ -5,7 +5,6 @@ tags:
 
 # Análisis de operaciones y restricciones
 
-
 | Ejercicio | Idea que hay que dominar |
 |---|---|
 | 1 | Incorporar RIR, simular cascadas y matching. Cada operación parte de la instancia original. |

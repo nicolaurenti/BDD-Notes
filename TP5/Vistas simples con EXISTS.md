@@ -5,7 +5,6 @@ tags:
 
 # Vistas simples con EXISTS
 
-
 Cuando solo se necesita filtrar entidades por relaciones, una subconsulta evita multiplicarlas y puede conservar un FROM simple:
 
 ```sql

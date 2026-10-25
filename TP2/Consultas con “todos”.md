@@ -5,7 +5,7 @@ tags:
 
 # Consultas con “todos”
 
-### Patrón de doble NOT EXISTS
+## Patrón de doble NOT EXISTS
 
 **No existe un elemento requerido para el cual no exista una relación.**
 

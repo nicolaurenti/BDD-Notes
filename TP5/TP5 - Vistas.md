@@ -121,19 +121,17 @@ En el práctico se distinguen los criterios **SQL-1999 presentados por la cáted
 
 **Idea clave:** que una vista sea actualizable no significa que cualquier escritura sea válida. Primero se analiza la vista y la operación que admite; después, los datos concretos y las restricciones base. Las condiciones adicionales de `WITH CHECK OPTION` se desarrollan en el punto 3.
 
-## 3. [[WITH CHECK OPTION y migración de filas]]
+## 3. [[WITH CHECK OPTION, LOCAL, CASCADED y migración de filas]]
 
-## 4. [[CHECK OPTION LOCAL y CASCADED]]
+## 4. [[Preservación de clave en vistas de ensamble]]
 
-## 5. [[Preservación de clave en vistas de ensamble]]
+## 5. [[Triggers INSTEAD OF sobre vistas]]
 
-## 6. [[Triggers INSTEAD OF sobre vistas]]
+## 6. [[Vistas con agregados]]
 
-## 7. [[Vistas con agregados]]
+## 7. [[Vistas simples con EXISTS]]
 
-## 8. [[Vistas simples con EXISTS]]
-
-## 9. [[Operaciones acumulativas sobre vistas]]
+## 8. [[Operaciones acumulativas sobre vistas]]
 
 ## Checklist del práctico
 

@@ -5,7 +5,6 @@ tags:
 
 # Análisis de ejercicios de seguridad
 
-
 | Ejercicio | Qué registrar |
 |---|---|
 | 1 | Grafo inicial, intento inválido de delegar DELETE y efecto de revocaciones por tabla/columna |

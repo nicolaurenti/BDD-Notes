@@ -5,7 +5,6 @@ tags:
 
 # Preservación de clave en vistas de ensamble
 
-
 Una tabla conserva su clave en el ensamble si cada fila suya aparece como máximo una vez en el resultado. Analizar cardinalidades y restricciones, no solo que la clave figure en el SELECT.
 
 - `ciudad JOIN pais` por su FK: cada ciudad tiene como máximo un país; la clave de ciudad se conserva. Un país puede repetirse por sus ciudades.

@@ -5,7 +5,6 @@ tags:
 
 # Tipos de datos SQL
 
-
 | Tipo | Uso |
 |---|---|
 | `INTEGER` | Números enteros. |

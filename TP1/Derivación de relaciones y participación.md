@@ -5,7 +5,6 @@ tags:
 
 # Derivación de relaciones y participación
 
-
 | Relación | Representación |
 |---|---|
 | **1:N** | La clave de la tabla del lado 1 se incorpora como FK en la tabla del lado N. |
@@ -14,7 +13,7 @@ tags:
 
 Los **atributos propios de una relación** se guardan donde se representa esa relación.
 
-### Participación obligatoria y opcional
+## Participación obligatoria y opcional
 
 - Si una fila debe tener una referencia, la FK lleva `NOT NULL`.
 - Si la referencia es opcional, puede admitir `NULL`.

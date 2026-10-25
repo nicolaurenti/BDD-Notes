@@ -15,13 +15,7 @@ Se estudia cómo obtener una estrategia de ejecución más eficiente sin cambiar
 
 ## 4. [[Índices y orden de columnas]]
 
-## 5. [[Filtros e índices en fechas y strings]]
-
-## 6. [[Reescritura de consultas con conteos y EXISTS]]
-
-## 7. [[Análisis de planes y fechas del TP7]]
-
-## 8. [[Método de comparación de rendimiento]]
+## 5. [[Reescritura de consultas con conteos y EXISTS]]
 
 ## Checklist del práctico
 

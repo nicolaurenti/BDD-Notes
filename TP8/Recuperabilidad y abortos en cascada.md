@@ -5,7 +5,6 @@ tags:
 
 # Recuperabilidad y abortos en cascada
 
-
 Si T2 lee un valor escrito por T1:
 
 - **Recuperable:** T2 no confirma antes de T1.

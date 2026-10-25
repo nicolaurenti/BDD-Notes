@@ -23,11 +23,7 @@ Este práctico parte del MERE y termina en un esquema de tablas con tipos, clave
 
 ## 8. [[Creación y modificación de tablas]]
 
-## 9. [[Inserción de filas con INSERT]]
-
-## 10. [[Actualización de filas con UPDATE]]
-
-## 11. [[Borrado de filas con DELETE]]
+## 9. [[Manipulación de filas con INSERT, UPDATE y DELETE]]
 
 ## Checklist del práctico
 

@@ -22,19 +22,15 @@ La clasificación depende del modelo: identificar primero dónde están los atri
 
 Una regla de atributo controla un valor; una de tupla relaciona columnas de la misma fila. CHECK y DOMAIN permiten expresar esos controles sin consultar otras filas.
 
-[[TP3 - Ejemplos de restricciones de atributo y tupla|Ejemplos de restricciones de atributo y tupla]]
-
 ### Tabla
 
 Una regla de tabla compara distintas filas de la misma relación. UNIQUE expresa unicidad; un máximo por grupo requiere un control agregado en el modelo declarativo del estándar.
-
-[[TP3 - Ejemplos de restricciones de tabla|Ejemplos de restricciones de tabla]]
 
 ### General
 
 Una regla general consulta varias tablas. El ejemplo compara las horas del voluntario con los límites de su tarea mediante una ASSERTION de SQL-1999.
 
-[[TP3 - Ejemplo de restricción general entre Voluntario y Tarea|Ejemplo de restricción general entre Voluntario y Tarea]]
+Los casos completos de atributo, tupla, tabla y regla general se comparan en [[TP3 - Ejemplos de clasificación de restricciones]].
 
 ### Cómo elegir el alcance
 
@@ -51,7 +47,27 @@ Los fragmentos son ejemplos de estudio: no se ejecutaron ni se crearon restricci
 
 PK, UNIQUE, NOT NULL y FK son recursos declarativos específicos. Se repasan sus garantías antes de elegir controles más generales.
 
-[[TP3 - Repaso de PK, UNIQUE, NOT NULL y FK|Repaso de PK, UNIQUE, NOT NULL y FK]]
+### Repaso de PK, UNIQUE, NOT NULL y FK
+
+Recordatorio de las restricciones básicas del TP1 y su uso al incorporar una referencia.
+
+- `PRIMARY KEY`: identifica la fila; incluye unicidad y ausencia de nulos.
+- `UNIQUE`: impide combinaciones repetidas; en PostgreSQL admite por defecto varios nulos.
+- `NOT NULL`: obliga a informar el atributo.
+- `FOREIGN KEY`: exige una referencia válida, salvo los casos de nulidad permitidos por el matching.
+
+Una FK compuesta comprueba la **combinación completa**. Dos FK separadas no expresan lo mismo.
+
+```sql
+ALTER TABLE trabaja_en
+ADD CONSTRAINT fk_trabaja_empleado
+FOREIGN KEY (tipo_e, nro_e)
+REFERENCES empleado (tipo_e, nro_e)
+ON DELETE CASCADE
+ON UPDATE RESTRICT;
+```
+
+Los nombres de columnas del ejemplo son ilustrativos; en los ejercicios 1 y 2 se deben tomar los nombres y flechas del diagrama del enunciado.
 
 ## Fuente de estudio
 

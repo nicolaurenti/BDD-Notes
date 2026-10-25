@@ -5,7 +5,6 @@ tags:
 
 # Agregación en el modelo de datos
 
-
 Una agregación permite tratar una relación como una unidad que participa en otra relación.
 
 En el ejercicio de cursos, `ES_REFERENTE` se relaciona con una **inscripción**, formada por un curso y un alumno.

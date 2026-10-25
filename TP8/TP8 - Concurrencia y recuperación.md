@@ -13,21 +13,17 @@ El práctico reúne dos problemas: que las transacciones concurrentes no produzc
 
 ## 3. [[Serializabilidad y grafo de precedencia]]
 
-## 4. [[Bloqueos compartidos y exclusivos]]
+## 4. [[Bloqueos, protocolo de dos fases y deadlocks]]
 
-## 5. [[Protocolo de dos fases y deadlocks]]
+## 5. [[Recuperabilidad y abortos en cascada]]
 
-## 6. [[Recuperabilidad y abortos en cascada]]
+## 6. [[MVCC y niveles de aislamiento]]
 
-## 7. [[MVCC y niveles de aislamiento]]
+## 7. [[Log, UNDO, REDO, WAL y checkpoints]]
 
-## 8. [[Log, UNDO, REDO y WAL]]
+## 8. [[Actualización diferida e inmediata y políticas de buffers]]
 
-## 9. [[Actualización diferida e inmediata y políticas de buffers]]
-
-## 10. [[Checkpoints y transacciones activas]]
-
-## 11. [[Análisis de logs y cortes ante fallas]]
+## 9. [[Análisis de logs y cortes ante fallas]]
 
 ## Checklist del práctico
 

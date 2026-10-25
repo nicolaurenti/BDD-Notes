@@ -7,21 +7,15 @@ tags:
 
 El objetivo es determinar quién puede realizar cada operación y quién puede conceder ese permiso. Las notas siguen el grafo de concesiones, las revocaciones y los roles usando los comandos y dependencias que presenta la cátedra.
 
-## 1. [[Usuarios, roles, objetos y privilegios]]
+## 1. [[Usuarios, roles y administración de privilegios]]
 
-## 2. [[GRANT y WITH GRANT OPTION]]
+## 2. [[GRANT, permisos efectivos y grafo de permisos]]
 
-## 3. [[Grafo de permisos]]
+## 3. [[REVOKE, RESTRICT y CASCADE]]
 
-## 4. [[REVOKE, RESTRICT y CASCADE]]
+## 4. [[Acceso a esquemas y objetos auxiliares]]
 
-## 5. [[Permisos efectivos y PUBLIC]]
-
-## 6. [[Creación y administración de roles]]
-
-## 7. [[Acceso a esquemas y objetos auxiliares]]
-
-## 8. [[Análisis de ejercicios de seguridad]]
+## 5. [[Análisis de ejercicios de seguridad]]
 
 ## Errores frecuentes
 

@@ -5,7 +5,6 @@ tags:
 
 # Vistas con agregados
 
-
 Una vista de cantidades no dice cómo repartir una actualización sobre las filas que la producen. Cambiar `cantidad_voluntarios` de 4 a 6 no identifica qué dos personas incorporar.
 
 ```sql

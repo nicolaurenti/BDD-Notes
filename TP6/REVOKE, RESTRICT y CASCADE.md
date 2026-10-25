@@ -5,7 +5,6 @@ tags:
 
 # REVOKE, RESTRICT y CASCADE
 
-
 ```sql
 REVOKE SELECT ON TABLE instalacion FROM adm CASCADE;
 
@@ -18,7 +17,7 @@ ON TABLE instalacion FROM adm CASCADE;
 - RESTRICT rechaza la revocación si existen concesiones dependientes que requieran retirarse.
 - CASCADE no elimina indiscriminadamente todos los permisos del receptor: pueden persistir concesiones independientes.
 
-### Un permiso de tabla no se resta revocando una columna
+## Un permiso de tabla no se resta revocando una columna
 
 Si se otorgó `UPDATE ON instalacion`, revocar `UPDATE(tarea)` no elimina el permiso sobre esa columna que sigue cubierto por el UPDATE de toda la tabla.
 
@@ -28,7 +27,19 @@ Para dejar acceso solo a ciertas columnas, retirar la concesión amplia correspo
 
 RESTRICT rechaza dependencias que quedarían sin fundamento. CASCADE retira concesiones dependientes. GRANT OPTION FOR puede quitar delegación conservando el permiso de uso.
 
-[[TP6 - Ejemplo comparado de RESTRICT, CASCADE y GRANT OPTION FOR|Ejemplo comparado de RESTRICT, CASCADE y GRANT OPTION FOR]]
+### Ejemplo comparado de RESTRICT, CASCADE y GRANT OPTION FOR
+
+Cadena A→B→C para comparar los tres resultados sobre la misma situación inicial.
+
+Partiendo de `A → B con SELECT y WGO → C con SELECT`, sin otros caminos:
+
+| Revocación de A a B | B después | C después |
+|---|---|---|
+| SELECT con RESTRICT | Se rechaza por la concesión dependiente; conserva lo anterior | Conserva lo anterior |
+| SELECT con CASCADE | Pierde SELECT y su delegación | Pierde el SELECT dependiente |
+| GRANT OPTION FOR SELECT con CASCADE | Conserva SELECT, pierde la delegación | Pierde el SELECT dependiente |
+
+En el primer caso no se retira primero el permiso y se deja a C «colgado»: se rechaza la operación que produciría esa dependencia inválida. En CASCADE se siguen solo los caminos afectados; una concesión independiente puede mantener el acceso.
 
 ## Tabla y columna no son permisos negativos
 
