@@ -74,6 +74,53 @@ No. Como el nuevo envío cumple `cantidad >= 500`, aparece la próxima vez que c
 
 ## 2. [[Actualización de vistas y restricciones base]]
 
+### ¿Qué significa actualizar una vista?
+
+En este tema, actualizar una vista significa realizar un `INSERT`, `UPDATE` o `DELETE` a través de ella. No significa refrescar su resultado ni cambiar su definición.
+
+Como la vista común no almacena sus propias filas, una escritura aceptada debe traducirse en una modificación de sus tablas base. Por ejemplo, para la vista simple `envios500` del punto 1:
+
+```sql
+UPDATE envios500
+SET cantidad = 800
+WHERE id_proveedor = 2 AND id_articulo = 20;
+```
+
+Suponiendo que esos identificadores identifican un único envío, que inicialmente tiene cantidad 700 y que las restricciones permiten el cambio, se modifica esa fila en `envio`. La próxima consulta tanto de la tabla como de la vista muestra cantidad 800. No se modifica una copia independiente.
+
+De la misma manera, un `INSERT` aceptado agrega una fila a la tabla base y un `DELETE` aceptado elimina la fila base correspondiente, con los efectos que determinen sus restricciones y triggers. Borrar una fila a través de una vista no consiste solamente en ocultarla de esa vista.
+
+### Dos preguntas diferentes
+
+1. **¿La vista admite esa modificación?** Hay que poder determinar sobre qué filas y columnas de las tablas base actuar y que el sistema admita esa traducción.
+2. **¿La operación concreta es válida?** Aunque la vista sea actualizable, deben respetarse las restricciones de la tabla base: PK, UNIQUE, FK, NOT NULL y CHECK, entre otras.
+
+Por ejemplo, supongamos una tabla `empleado` con `id_empleado` como PK, `nombre` e `id_departamento`. El departamento es obligatorio (`NOT NULL`) y no tiene `DEFAULT`. Definimos:
+
+```sql
+CREATE VIEW empleados_d20 AS
+SELECT id_empleado, nombre
+FROM empleado
+WHERE id_departamento = 20;
+```
+
+Cambiar el nombre de un empleado visible puede ser válido. Sin embargo, este intento de inserción no aporta el departamento:
+
+```sql
+INSERT INTO empleados_d20 (id_empleado, nombre)
+VALUES (101, 'Ana');
+```
+
+Suponiendo que no hay mecanismos adicionales que completen el dato, se rechaza por el `NOT NULL` de `id_departamento`. **El filtro `WHERE id_departamento = 20` no asigna automáticamente 20 a la columna omitida.** El filtro selecciona filas; no es un valor por defecto.
+
+### ¿Toda vista es actualizable?
+
+No. Poder obtener un resultado no garantiza que exista una traducción admitida para modificar sus datos. Si una vista muestra `SUM(cantidad)`, cambiar ese total no indica cómo repartir el cambio entre los envíos que lo componen. En un join también hay que analizar qué tabla y qué filas recibirían la modificación.
+
+En el práctico se distinguen los criterios **SQL-1999 presentados por la cátedra** y las reglas de **actualización automática de PostgreSQL**. Para vistas simples, la cátedra analiza conservación de la clave y ausencia de DISTINCT, agregados, información derivada y subconsultas en la lista SELECT. PostgreSQL puede admitir una vista simple aunque no proyecte la PK completa. Los joins requieren un análisis separado; no alcanza con aplicarles las reglas de una vista simple. El desarrollo comparativo está dentro de la nota de este tema.
+
+**Idea clave:** que una vista sea actualizable no significa que cualquier escritura sea válida. Primero se analiza la vista y la operación que admite; después, los datos concretos y las restricciones base. Las condiciones adicionales de `WITH CHECK OPTION` se desarrollan en el punto 3.
+
 ## 3. [[WITH CHECK OPTION y migración de filas]]
 
 ## 4. [[CHECK OPTION LOCAL y CASCADED]]
