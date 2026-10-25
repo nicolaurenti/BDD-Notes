@@ -158,6 +158,55 @@ En el práctico se distinguen los criterios **SQL-1999 presentados por la cáted
 
 ## 3. [[WITH CHECK OPTION, LOCAL, CASCADED y migración de filas]]
 
+### Qué controla WITH CHECK OPTION
+
+En una vista simple sobre una tabla, `WITH CHECK OPTION` exige que las filas insertadas o modificadas a través de la vista cumplan su condición. Retomamos empleados del departamento 20:
+
+```sql
+CREATE VIEW empleados_d20_controlados AS
+SELECT id_empleado, nombre, id_departamento
+FROM empleado
+WHERE id_departamento = 20
+WITH CHECK OPTION;
+```
+
+Suponiendo válidas las restricciones de la tabla base:
+
+| Operación a través de la vista | Sin CHECK OPTION | Con CHECK OPTION |
+| --- | --- | --- |
+| Insertar un empleado del departamento 20 | Se inserta y queda visible | Se inserta y queda visible |
+| Insertar un empleado del departamento 30 | Se inserta en la base, pero queda fuera de la vista | Se rechaza |
+| Cambiar un empleado visible del departamento 20 al 30 | Se modifica en la base y deja de verse | Se rechaza el cambio |
+| Cambiar solo el nombre de un empleado visible | Se permite | Se permite: sigue cumpliendo el filtro |
+
+### Migración de filas
+
+Se llama migración de filas al cambio por el que una fila deja de pertenecer al resultado de la vista. No se traslada a otra tabla ni necesariamente se elimina: puede seguir existiendo en la misma tabla base.
+
+Por ejemplo, Ana pertenece al departamento 20. Si a través de una vista sin chequeo cambiamos su departamento a 30, se modifica `empleado` y Ana deja de aparecer en la vista. Con el chequeo de la definición anterior, ese cambio se rechaza y Ana conserva el departamento 20.
+
+### Primero se seleccionan las filas, después se comprueba el resultado
+
+Un UPDATE sobre la vista solo puede alcanzar las filas actualmente visibles. Si Luis ya pertenece al departamento 30, no podemos seleccionarlo a través de esta vista para pasarlo al 20: no aparece entre las filas sobre las que actúa el UPDATE. Esa sentencia no modifica a Luis, aunque el valor propuesto sí cumpla el filtro.
+
+En cambio, si la fila ya es visible, se propone el cambio y CHECK OPTION comprueba el estado resultante. No basta con que la fila cumpliera el filtro antes del UPDATE.
+
+### Alcance del chequeo
+
+- Controla INSERT y UPDATE realizados a través de la vista. No impide modificar directamente la tabla base para dejar filas fuera de su resultado.
+- No impide un DELETE permitido: borrar la fila no genera una nueva versión que deba cumplir el filtro.
+- No completa columnas omitidas, no reemplaza PK/FK/NOT NULL/CHECK y no vuelve actualizable una vista que no lo era.
+
+### Cuando hay vistas anidadas: LOCAL y CASCADED
+
+Con vistas sobre otras vistas, hay que precisar qué condiciones se comprueban:
+
+- `WITH LOCAL CHECK OPTION` agrega el control de la condición de la vista actual; los controles propios de las vistas inferiores siguen vigentes.
+- `WITH CASCADED CHECK OPTION` exige también las condiciones de todas las vistas inferiores, aunque estas no tengan CHECK OPTION propio.
+- `WITH CHECK OPTION` sin modalidad equivale a CASCADED.
+
+Ejemplo: V1 filtra `cantidad >= 500` y no tiene chequeo; V2 consulta V1 y filtra `cantidad < 1000`. Insertar 300 por V2 supera un chequeo LOCAL de V2, porque 300 es menor que 1000, pero queda fuera del resultado de ambas vistas. Con CASCADED en V2 se rechaza porque también se exige `cantidad >= 500`. Si V1 ya tuviera su propio CHECK OPTION, también se rechazaría con LOCAL en V2: LOCAL no desactiva controles inferiores.
+
 ## 4. [[Preservación de clave en vistas de ensamble]]
 
 ## 5. [[Triggers INSTEAD OF sobre vistas]]
