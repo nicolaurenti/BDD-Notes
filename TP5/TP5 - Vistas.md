@@ -260,6 +260,40 @@ CASCADED comprueba la condición de la vista por la que escribimos y las condici
 
 ## 4. [[Preservación de clave en vistas de ensamble]]
 
+Una tabla **preserva su clave en un join** cuando cada fila de esa tabla puede aparecer como máximo una vez en el resultado. Su clave sigue identificando una única fila del ensamble. No alcanza con incluir sus columnas de clave en el SELECT: hay que analizar si el join puede repetirlas.
+
+### Ejemplo: empleados y departamentos
+
+Supongamos `empleado` con PK `id_empleado` y FK `id_departamento`, que referencia la PK de `departamento`. Un departamento puede tener muchos empleados:
+
+```sql
+CREATE VIEW empleados_departamentos AS
+SELECT e.id_empleado, e.nombre AS nombre_empleado,
+       d.id_departamento, d.nombre AS nombre_departamento
+FROM empleado e
+JOIN departamento d
+  ON e.id_departamento = d.id_departamento;
+```
+
+Un posible resultado es:
+
+| id_empleado | nombre_empleado | id_departamento | nombre_departamento |
+| --- | --- | --- | --- |
+| 1 | Ana | 20 | Ventas |
+| 2 | Luis | 20 | Ventas |
+| 3 | Eva | 30 | Compras |
+
+- **Empleado preserva su clave:** cada empleado se une con un único departamento como máximo, porque el departamento se busca por su PK. `id_empleado` no se repite.
+- **Departamento no preserva su clave:** un departamento puede unirse con varios empleados. El 20 aparece en dos filas; `id_departamento` no identifica una única fila del resultado.
+
+### Para qué sirve al actualizar
+
+Cambiar el nombre de Ana se puede asociar a una fila concreta de `empleado`. En cambio, cambiar el nombre de Ventas desde la primera fila afectaría al mismo departamento que también aparece en la segunda: el cambio se reflejaría en ambas filas del resultado.
+
+La preservación ayuda a razonar la propagación de escrituras según los criterios de cátedra. No significa que cualquier escritura sobre el join esté permitida. En PostgreSQL, una vista con este join no admite actualización automática; se necesita un mecanismo explícito, como los triggers INSTEAD OF del punto siguiente.
+
+**Cómo decidirlo:** preguntar, para cada tabla, si una fila suya puede combinarse con más de una fila de la otra. Si puede, su clave puede repetirse y no queda preservada. La conclusión debe apoyarse en las restricciones del modelo, no solo en los datos actuales: aunque hoy hubiera un empleado por departamento, el modelo seguiría permitiendo varios.
+
 ## 5. [[Triggers INSTEAD OF sobre vistas]]
 
 ## 6. [[Vistas con agregados]]
