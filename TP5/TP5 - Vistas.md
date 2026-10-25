@@ -464,6 +464,56 @@ Se puede definir una política explícita con INSTEAD OF, por ejemplo permitir c
 
 ## 7. [[Vistas simples con EXISTS]]
 
+EXISTS pregunta si una subconsulta encuentra al menos una fila. Permite filtrar una tabla por la existencia de datos relacionados sin incorporar las filas de la otra tabla al resultado exterior.
+
+### Ejemplo completo: departamentos que tienen empleados
+
+Tabla `departamento`:
+
+| id_departamento | nombre |
+| --- | --- |
+| 20 | Ventas |
+| 30 | Compras |
+| 40 | Sistemas |
+
+Tabla `empleado`:
+
+| legajo | nombre | id_departamento |
+| --- | --- | --- |
+| 1 | Ana | 20 |
+| 2 | Luis | 20 |
+| 3 | Eva | 30 |
+
+```sql
+CREATE VIEW departamentos_con_empleados AS
+SELECT d.id_departamento, d.nombre
+FROM departamento d
+WHERE EXISTS (
+    SELECT 1
+    FROM empleado e
+    WHERE e.id_departamento = d.id_departamento
+);
+```
+
+Al consultar la vista ordenada por `id_departamento`:
+
+| id_departamento | nombre |
+| --- | --- |
+| 20 | Ventas |
+| 30 | Compras |
+
+Ventas aparece una sola vez, aunque tenga dos empleados. EXISTS solo pregunta si hay alguno; no produce una fila por cada coincidencia. Compras aparece porque tiene a Eva y Sistemas queda fuera porque no tiene empleados.
+
+`SELECT 1` no cuenta empleados ni agrega una columna al resultado de la vista: para EXISTS interesa si hay filas, no el valor seleccionado. La comparación con `d.id_departamento` relaciona la subconsulta con el departamento exterior que se está evaluando.
+
+### Diferencia con el join y relación con las actualizaciones
+
+Un join directo de departamento con empleado devuelve Ventas dos veces. EXISTS permite conservar una fila por departamento sin recurrir a DISTINCT.
+
+En esta vista, el FROM exterior sigue teniendo solo `departamento` y las columnas seleccionadas vienen directamente de esa tabla. La subconsulta en WHERE filtra. Esta estructura admite actualización automática en PostgreSQL; tener una subconsulta en WHERE no equivale a tener un join en el FROM exterior ni un agregado en el SELECT exterior.
+
+Por ejemplo, un UPDATE del nombre de Ventas mediante la vista modifica el nombre en `departamento`; no modifica nombres en `empleado`. Siguen aplicándose las restricciones base. Además, sin CHECK OPTION, insertar un departamento sin empleados puede incorporarlo a la tabla y dejarlo fuera de la vista. La condición EXISTS no crea automáticamente un empleado relacionado.
+
 ## 8. [[Operaciones acumulativas sobre vistas]]
 
 ## Checklist del práctico
