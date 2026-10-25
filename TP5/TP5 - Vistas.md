@@ -516,6 +516,55 @@ Por ejemplo, un UPDATE del nombre de Ventas mediante la vista modifica el nombre
 
 ## 8. [[Operaciones acumulativas sobre vistas]]
 
+**Acumulativas significa que cada operación parte del estado que dejó la anterior.** No se vuelve a los datos iniciales antes de cada sentencia.
+
+### Ejemplo: una fila deja de verse, pero sigue existiendo
+
+Estado inicial de `empleado`:
+
+| legajo | nombre | id_departamento |
+| --- | --- | --- |
+| 1 | Ana | 20 |
+
+Suponemos que los departamentos 20 y 30 existen, `legajo` es PK y se cumplen las demás restricciones. Usamos esta vista, sin CHECK OPTION:
+
+```sql
+CREATE VIEW empleados_d20_acumulativo AS
+SELECT legajo, nombre, id_departamento
+FROM empleado
+WHERE id_departamento = 20;
+```
+
+Ejecutamos las siguientes sentencias en orden, cada una por separado con autocommit; no dentro de una transacción explícita que quede abortada al producirse un error:
+
+```sql
+-- 1. Ana pasa a departamento 30 y deja de verse.
+UPDATE empleados_d20_acumulativo
+SET id_departamento = 30 WHERE legajo = 1;
+
+-- 2. Ana ya no está visible: no se modifica ninguna fila.
+UPDATE empleados_d20_acumulativo
+SET nombre = 'Ana María' WHERE legajo = 1;
+
+-- 3. Se rechaza: el legajo 1 sigue existiendo en empleado.
+INSERT INTO empleados_d20_acumulativo
+VALUES (1, 'Pedro', 20);
+
+-- 4. Se acepta: el legajo 2 está libre.
+INSERT INTO empleados_d20_acumulativo
+VALUES (2, 'Luis', 20);
+```
+
+| Paso | Resultado | Tabla empleado después | Vista después |
+| --- | --- | --- | --- |
+| Inicial | — | Ana, legajo 1, departamento 20 | Ana |
+| 1 | Modifica una fila | Ana, legajo 1, departamento 30 | Vacía |
+| 2 | Modifica cero filas; no es un rechazo | Ana, legajo 1, departamento 30 | Vacía |
+| 3 | Rechazo por PK duplicada | Ana, legajo 1, departamento 30 | Vacía |
+| 4 | Inserta una fila | Ana (1, departamento 30) y Luis (2, departamento 20) | Luis |
+
+**Método:** después de cada sentencia, anotar si se acepta, se rechaza o afecta cero filas; actualizar el estado base; y volver a determinar qué filas muestra cada vista. Una operación rechazada no agrega su fila. Que una fila quede oculta no libera su PK ni permite seleccionarla desde esa vista.
+
 ## Checklist del práctico
 
 - [ ] Definir vistas simples, anidadas, de join y agregadas.
