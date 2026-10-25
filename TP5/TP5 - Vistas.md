@@ -264,6 +264,15 @@ Una tabla **preserva su clave en un join** cuando cada fila de esa tabla puede a
 
 ### Ejemplo: empleados y departamentos
 
+**Primero, la idea con dos filas:** Ana (legajo 1) y Luis (legajo 2) trabajan en Ventas (departamento 20). Al juntar empleados y departamentos, obtenemos:
+
+| Legajo | Empleado | Código de departamento | Departamento |
+| --- | --- | --- | --- |
+| 1 | Ana | 20 | Ventas |
+| 2 | Luis | 20 | Ventas |
+
+Buscar el legajo 1 identifica una sola fila: la de Ana. Buscar el departamento 20 devuelve dos filas: la de Ana y la de Luis. Por eso, en este join la clave del empleado sigue sirviendo para distinguir cada fila del resultado, pero la clave del departamento ya no alcanza. Eso significa que se preserva la clave de empleado y no la de departamento. El departamento 20 sigue siendo único en su tabla original; se repite al mostrarlo junto a cada empleado.
+
 Supongamos `empleado` con PK `id_empleado` y FK `id_departamento`, que referencia la PK de `departamento`. Un departamento puede tener muchos empleados:
 
 ```sql
