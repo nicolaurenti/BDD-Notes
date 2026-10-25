@@ -405,6 +405,10 @@ En la tabla `empleado`, el nombre del legajo 1 también es Ana María. La tabla 
 
 Este trigger atiende solo UPDATE. INSERT y DELETE necesitan su propia implementación. Las restricciones base siguen aplicándose, y cualquier filtro o regla adicional de la política debe controlarse explícitamente: agregar el trigger no decide por sí solo cómo debe propagarse cada cambio.
 
+### Síntesis de la conversación
+
+Un trigger INSTEAD OF sobre una vista permite definir qué hacer en lugar del INSERT, UPDATE o DELETE solicitado sobre ella. En el uso estudiado, su función traduce esa operación en modificaciones explícitas de una o varias tablas base. La modificación no ocurre solo por declarar INSTEAD OF: hay que escribir las instrucciones correspondientes dentro de la función. También podemos validar y rechazar operaciones que la política no admite.
+
 ## 6. [[Vistas con agregados]]
 
 ## 7. [[Vistas simples con EXISTS]]
