@@ -113,6 +113,25 @@ VALUES (101, 'Ana');
 
 Suponiendo que no hay mecanismos adicionales que completen el dato, se rechaza por el `NOT NULL` de `id_departamento`. **El filtro `WHERE id_departamento = 20` no asigna automáticamente 20 a la columna omitida.** El filtro selecciona filas; no es un valor por defecto.
 
+### Duda: si inserto una fila válida en la vista, ¿se agrega a la tabla base?
+
+Sí. Si la vista admite el INSERT y la fila cumple las restricciones, insertar a través de `empleados_d20` incorpora la fila en `empleado`. No se crea una fila independiente guardada en la vista.
+
+En la definición anterior, la vista omite `id_departamento`, por lo que el INSERT mostrado no era válido bajo los supuestos indicados. Si la vista incluyera esa columna, podríamos proporcionarla explícitamente:
+
+```sql
+CREATE VIEW empleados_d20_completa AS
+SELECT id_empleado, nombre, id_departamento
+FROM empleado
+WHERE id_departamento = 20;
+
+INSERT INTO empleados_d20_completa
+    (id_empleado, nombre, id_departamento)
+VALUES (101, 'Ana', 20);
+```
+
+Suponiendo que el identificador 101 está libre, el departamento 20 existe y se cumplen las demás restricciones, la fila se agrega a `empleado`. Como también cumple el filtro, se verá al consultar tanto `empleados_d20_completa` como `empleados_d20`. No hay que insertarla por separado en la tabla.
+
 ### ¿Toda vista es actualizable?
 
 No. Poder obtener un resultado no garantiza que exista una traducción admitida para modificar sus datos. Si una vista muestra `SUM(cantidad)`, cambiar ese total no indica cómo repartir el cambio entre los envíos que lo componen. En un join también hay que analizar qué tabla y qué filas recibirían la modificación.
