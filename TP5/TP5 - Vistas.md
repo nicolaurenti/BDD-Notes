@@ -411,6 +411,57 @@ Un trigger INSTEAD OF sobre una vista permite definir qué hacer en lugar del IN
 
 ## 6. [[Vistas con agregados]]
 
+Una vista con agregados presenta resultados calculados mediante funciones como COUNT, SUM o AVG. Por ejemplo, podemos mostrar la cantidad de empleados de cada departamento en lugar de una fila por empleado.
+
+### Tablas del ejemplo
+
+Este ejemplo es independiente del anterior. Tabla `departamento`, con PK `id_departamento`:
+
+| id_departamento | nombre |
+| --- | --- |
+| 20 | Ventas |
+| 30 | Compras |
+| 40 | Sistemas |
+
+Tabla `empleado`, con PK `legajo` y FK `id_departamento`:
+
+| legajo | nombre | id_departamento |
+| --- | --- | --- |
+| 1 | Ana | 20 |
+| 2 | Luis | 20 |
+| 3 | Eva | 30 |
+
+### Definición y resultado de la vista
+
+```sql
+CREATE VIEW cantidad_empleados_departamento AS
+SELECT d.id_departamento,
+       d.nombre AS departamento,
+       COUNT(e.legajo) AS cantidad_empleados
+FROM departamento d
+LEFT JOIN empleado e
+  ON e.id_departamento = d.id_departamento
+GROUP BY d.id_departamento, d.nombre;
+```
+
+Al ejecutar `SELECT * FROM cantidad_empleados_departamento ORDER BY id_departamento;` obtenemos:
+
+| id_departamento | departamento | cantidad_empleados |
+| --- | --- | --- |
+| 20 | Ventas | 2 |
+| 30 | Compras | 1 |
+| 40 | Sistemas | 0 |
+
+GROUP BY reúne las filas de cada departamento y COUNT cuenta sus empleados. LEFT JOIN conserva también Sistemas, aunque no tenga empleados. Contamos `e.legajo` porque es una PK no nula: la fila sin empleado tiene NULL en esa columna y COUNT no la cuenta. Con COUNT(*) contaríamos la fila del join y mostraríamos incorrectamente 1 para Sistemas. Con INNER JOIN, Sistemas no aparecería.
+
+### Por qué el conteo no se modifica automáticamente
+
+Si intentamos cambiar la cantidad de Ventas de 2 a 3 en la vista, no estamos indicando qué empleado agregar ni cuáles son su legajo, nombre y demás datos necesarios. El motor no tiene una traducción automática de ese cambio hacia las tablas base. Esta vista agregada no es automáticamente actualizable en PostgreSQL.
+
+Lo habitual es agregar el empleado a `empleado`, con departamento 20. Al volver a consultar la vista, el conteo será 3 sin modificar su definición. Lo mismo sucede con SUM y AVG: cambiar el resultado agregado no determina por sí solo qué filas base modificar.
+
+Se puede definir una política explícita con INSTEAD OF, por ejemplo permitir cambiar el nombre del departamento y rechazar cambios del conteo. El trigger no hace que COUNT sea un dato independiente almacenado en la vista.
+
 ## 7. [[Vistas simples con EXISTS]]
 
 ## 8. [[Operaciones acumulativas sobre vistas]]
