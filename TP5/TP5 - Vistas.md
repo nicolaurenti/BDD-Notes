@@ -341,6 +341,70 @@ La preservación ayuda a razonar la propagación de escrituras según los criter
 
 ## 5. [[Triggers INSTEAD OF sobre vistas]]
 
+`INSTEAD OF` significa **«en lugar de»**. Un trigger de este tipo reemplaza la operación solicitada sobre la vista por las instrucciones de su función. Así definimos explícitamente cómo escribir en las tablas base.
+
+### Continuamos con empleados y departamentos
+
+Usamos la vista `empleados_con_departamento` del ejemplo anterior. En PostgreSQL, su join impide la actualización automática. Queremos permitir una sola operación: cambiar el nombre del empleado. No permitiremos cambiar legajo, código de departamento ni nombre de departamento mediante este UPDATE.
+
+Estado inicial de la vista:
+
+| legajo | empleado | id_departamento | departamento |
+| --- | --- | --- | --- |
+| 1 | Ana | 20 | Ventas |
+| 2 | Luis | 20 | Ventas |
+
+Creamos la función que implementa esa política:
+
+```sql
+CREATE OR REPLACE FUNCTION cambiar_nombre_empleado_vista()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    IF NEW.legajo IS DISTINCT FROM OLD.legajo
+       OR NEW.id_departamento IS DISTINCT FROM OLD.id_departamento
+       OR NEW.departamento IS DISTINCT FROM OLD.departamento THEN
+        RAISE EXCEPTION 'Solo se permite cambiar el nombre del empleado';
+    END IF;
+
+    UPDATE empleado
+    SET nombre = NEW.empleado
+    WHERE legajo = OLD.legajo;
+
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER tr_cambiar_nombre_empleado_vista
+INSTEAD OF UPDATE ON empleados_con_departamento
+FOR EACH ROW
+EXECUTE PROCEDURE cambiar_nombre_empleado_vista();
+```
+
+Ahora solicitamos:
+
+```sql
+UPDATE empleados_con_departamento
+SET empleado = 'Ana María'
+WHERE legajo = 1;
+```
+
+Para esa fila, `OLD.empleado` vale `'Ana'` y `NEW.empleado` vale `'Ana María'`. El trigger usa `OLD.legajo = 1` para localizar el empleado original y ejecuta el cambio en `empleado.nombre`. El IF admite el cambio porque las otras columnas mantienen sus valores. `IS DISTINCT FROM` permite comparar también cuando hay NULL.
+
+Resultado de consultar la vista después, ordenada por legajo:
+
+| legajo | empleado | id_departamento | departamento |
+| --- | --- | --- | --- |
+| 1 | Ana María | 20 | Ventas |
+| 2 | Luis | 20 | Ventas |
+
+En la tabla `empleado`, el nombre del legajo 1 también es Ana María. La tabla `departamento` conserva su fila `(20, Ventas)`.
+
+**Qué aporta cada parte:** INSTEAD OF reemplaza el UPDATE de la vista; el UPDATE dentro de la función modifica la tabla base; el IF define qué cambios admitimos. `RETURN NEW` indica que se atendió la fila. No se vuelve a ejecutar automáticamente el UPDATE original sobre la vista después del trigger.
+
+Este trigger atiende solo UPDATE. INSERT y DELETE necesitan su propia implementación. Las restricciones base siguen aplicándose, y cualquier filtro o regla adicional de la política debe controlarse explícitamente: agregar el trigger no decide por sí solo cómo debe propagarse cada cambio.
+
 ## 6. [[Vistas con agregados]]
 
 ## 7. [[Vistas simples con EXISTS]]
