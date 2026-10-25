@@ -205,7 +205,52 @@ Con vistas sobre otras vistas, hay que precisar qué condiciones se comprueban:
 - `WITH CASCADED CHECK OPTION` exige también las condiciones de todas las vistas inferiores, aunque estas no tengan CHECK OPTION propio.
 - `WITH CHECK OPTION` sin modalidad equivale a CASCADED.
 
-Ejemplo: V1 filtra `cantidad >= 500` y no tiene chequeo; V2 consulta V1 y filtra `cantidad < 1000`. Insertar 300 por V2 supera un chequeo LOCAL de V2, porque 300 es menor que 1000, pero queda fuera del resultado de ambas vistas. Con CASCADED en V2 se rechaza porque también se exige `cantidad >= 500`. Si V1 ya tuviera su propio CHECK OPTION, también se rechazaría con LOCAL en V2: LOCAL no desactiva controles inferiores.
+#### Un ejemplo con las mismas condiciones y distinto control
+
+Definimos una vista inferior sin CHECK OPTION:
+
+```sql
+CREATE VIEW envios_desde500 AS
+SELECT id_proveedor, id_articulo, cantidad
+FROM envio
+WHERE cantidad >= 500;
+```
+
+Sobre ella definimos dos alternativas de vista superior:
+
+```sql
+CREATE VIEW envios_rango_local AS
+SELECT id_proveedor, id_articulo, cantidad
+FROM envios_desde500
+WHERE cantidad < 1000
+WITH LOCAL CHECK OPTION;
+
+CREATE VIEW envios_rango_cascaded AS
+SELECT id_proveedor, id_articulo, cantidad
+FROM envios_desde500
+WHERE cantidad < 1000
+WITH CASCADED CHECK OPTION;
+```
+
+Al consultar, **ambas muestran lo mismo**: cantidades mayores o iguales a 500 y menores que 1000. LOCAL y CASCADED no cambian los filtros del SELECT; cambian las condiciones comprobadas al escribir a través de la vista.
+
+Para comparar los INSERT, suponemos casos independientes, identificadores libres y todas las restricciones base satisfechas:
+
+| Cantidad insertada por la vista superior | Con LOCAL | Con CASCADED |
+| --- | --- | --- |
+| 300 | Se inserta en `envio`, pero no aparece en ninguna de estas vistas | Se rechaza por `cantidad >= 500` |
+| 700 | Se inserta y queda visible | Se inserta y queda visible |
+| 1200 | Se rechaza por `cantidad < 1000` | Se rechaza por `cantidad < 1000` |
+
+Con LOCAL, 300 supera la condición propia de la vista superior (`300 < 1000`). La inferior no tiene chequeo, por lo que no impone `cantidad >= 500` como control de escritura. Con CASCADED, también se comprueba la condición inferior y se rechaza 300.
+
+#### LOCAL no desactiva los chequeos inferiores
+
+Si `envios_desde500` tuviera su propio `WITH CHECK OPTION`, insertar 300 por `envios_rango_local` también se rechazaría: el chequeo inferior sigue vigente. LOCAL no significa ignorar todo lo que está debajo, sino agregar el control propio sin exigir por sí mismo los filtros inferiores que no tengan chequeo.
+
+El mismo razonamiento se aplica a UPDATE. Una fila visible de cantidad 700 podría cambiar a 300 mediante la alternativa LOCAL del ejemplo original, quedando fuera del resultado. La alternativa CASCADED lo impediría; también lo impediría un chequeo propio en la vista inferior.
+
+**Método para resolver ejercicios:** distinguir primero los filtros que determinan qué filas se ven; después recorrer la cadena de vistas y anotar qué condiciones se controlan al escribir. No deducir los controles solo a partir de las filas visibles.
 
 ## 4. [[Preservación de clave en vistas de ensamble]]
 
