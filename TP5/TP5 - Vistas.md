@@ -132,6 +132,22 @@ VALUES (101, 'Ana', 20);
 
 Suponiendo que el identificador 101 está libre, el departamento 20 existe y se cumplen las demás restricciones, la fila se agrega a `empleado`. Como también cumple el filtro, se verá al consultar tanto `empleados_d20_completa` como `empleados_d20`. No hay que insertarla por separado en la tabla.
 
+### Duda: si inserto una fila que no cumple el filtro de la vista, ¿se agrega igual a la tabla?
+
+Sí, si la vista admite el INSERT, los datos cumplen las restricciones base y no hay un control adicional que lo impida. **El WHERE por sí solo no exige que la fila insertada quede visible en la vista.**
+
+Usando `empleados_d20_completa` del ejemplo anterior, que incluye `id_departamento` y no tiene `WITH CHECK OPTION`:
+
+```sql
+INSERT INTO empleados_d20_completa
+    (id_empleado, nombre, id_departamento)
+VALUES (102, 'Luis', 30);
+```
+
+Si el identificador está libre, el departamento 30 existe y se cumplen las demás restricciones, Luis se agrega a `empleado`. Sin embargo, no aparece al consultar la vista, porque esta muestra solamente empleados del departamento 20. El INSERT se acepta aunque la fila resultante quede fuera del resultado de la vista.
+
+Para exigir que las filas insertadas o modificadas a través de esta vista cumplan su condición, se agrega `WITH CHECK OPTION` a su definición. En ese caso, el INSERT con departamento 30 se rechaza y no incorpora esa fila a la tabla. Es el tema del punto 3.
+
 ### ¿Toda vista es actualizable?
 
 No. Poder obtener un resultado no garantiza que exista una traducción admitida para modificar sus datos. Si una vista muestra `SUM(cantidad)`, cambiar ese total no indica cómo repartir el cambio entre los envíos que lo componen. En un join también hay que analizar qué tabla y qué filas recibirían la modificación.
