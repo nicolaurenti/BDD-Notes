@@ -252,6 +252,12 @@ El mismo razonamiento se aplica a UPDATE. Una fila visible de cantidad 700 podr�
 
 **Método para resolver ejercicios:** distinguir primero los filtros que determinan qué filas se ven; después recorrer la cadena de vistas y anotar qué condiciones se controlan al escribir. No deducir los controles solo a partir de las filas visibles.
 
+#### Duda: ¿CASCADED revisa todas las vistas y LOCAL solo la que se consulta?
+
+La distinción corresponde a INSERT y UPDATE a través de una vista, no al SELECT. Al consultar, se aplican los filtros de toda la cadena en ambos casos.
+
+CASCADED comprueba la condición de la vista por la que escribimos y las condiciones de todas sus vistas subyacentes. No comprueba otras vistas ajenas a esa cadena. LOCAL agrega el control de la condición propia, pero conserva los CHECK OPTION que ya existan debajo. Por eso, decir «LOCAL solo controla esta vista» es correcto únicamente si no hay chequeos inferiores que también deban aplicarse.
+
 ## 4. [[Preservación de clave en vistas de ensamble]]
 
 ## 5. [[Triggers INSTEAD OF sobre vistas]]
