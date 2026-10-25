@@ -264,7 +264,43 @@ Una tabla **preserva su clave en un join** cuando cada fila de esa tabla puede a
 
 ### Ejemplo: empleados y departamentos
 
-**Primero, la idea con dos filas:** Ana (legajo 1) y Luis (legajo 2) trabajan en Ventas (departamento 20). Al juntar empleados y departamentos, obtenemos:
+#### Ejemplo completo: tablas, vista y resultado
+
+Tabla `empleado`: `legajo` es la PK e `id_departamento` es una FK hacia `departamento`.
+
+| legajo | nombre | id_departamento |
+| --- | --- | --- |
+| 1 | Ana | 20 |
+| 2 | Luis | 20 |
+
+Tabla `departamento`: `id_departamento` es la PK.
+
+| id_departamento | nombre |
+| --- | --- |
+| 20 | Ventas |
+
+Creamos la vista:
+
+```sql
+CREATE VIEW empleados_con_departamento AS
+SELECT e.legajo,
+       e.nombre AS empleado,
+       d.id_departamento,
+       d.nombre AS departamento
+FROM empleado e
+JOIN departamento d
+  ON e.id_departamento = d.id_departamento;
+```
+
+Para consultar el resultado ordenado:
+
+```sql
+SELECT *
+FROM empleados_con_departamento
+ORDER BY legajo;
+```
+
+La vista devuelve:
 
 | Legajo | Empleado | Código de departamento | Departamento |
 | --- | --- | --- | --- |
