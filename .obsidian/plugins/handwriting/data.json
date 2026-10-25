@@ -1,0 +1,51 @@
+{
+  "savedViews": [],
+  "cameras": {},
+  "inkSizes": {
+    "pen": 1,
+    "highlighter": 1
+  },
+  "inkColors": {
+    "pen": "#2f6de0",
+    "highlighter": "#ffd60a"
+  },
+  "pressureSensitivity": true,
+  "pressureChoice": true,
+  "inkSmoothing": true,
+  "inkAdaptsToTheme": false,
+  "inkReadableInExports": true,
+  "inkPdfColorMode": "darken",
+  "pageOwners": {
+    "bc3f529a-e4af-4732-8a54-6779436e3274": "WITH CHECK OPTION y migración de filas.md"
+  },
+  "eraserRadiusPx": 14,
+  "mouseInk": false,
+  "strokePrediction": true,
+  "booxMode": false,
+  "einkHintOffered": false,
+  "scribbleHintOffered": false,
+  "paperStyle": "none",
+  "extendCanvasWhileScrolling": false,
+  "hideStatusBarOnInkedNotes": false,
+  "penTools": "auto",
+  "noteZoomControls": "auto",
+  "barsRestore": null,
+  "eraserMode": "stroke",
+  "penReticle": true,
+  "shapeSnap": true,
+  "devDiagnostics": false,
+  "slidesInk": true,
+  "colorSizeCommands": false,
+  "penPresets": [],
+  "toolbarCorner": "top-center",
+  "stripFoldOrder": [
+    "editor:redo",
+    "handwriting:inline-tool-pan",
+    "handwriting:pen-ink-toggle",
+    "handwriting:paste-ink",
+    "handwriting:copy-selected-ink",
+    "handwriting:inline-tool-space"
+  ],
+  "inkFolder": ".handwriting",
+  "lastSeenVersion": "1.4.23"
+}

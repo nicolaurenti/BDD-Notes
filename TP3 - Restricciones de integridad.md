@@ -154,7 +154,7 @@ CHECK expresa una condición que debe cumplir el dato. En PostgreSQL controla la
 
 ### Valores permitidos, fechas y patrones
 
-```sql
+```mysql
 ALTER TABLE articulo
 ADD CONSTRAINT ck_nacionalidad
 CHECK (nacionalidad IN (

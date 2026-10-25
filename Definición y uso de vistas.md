@@ -10,7 +10,7 @@ Una vista común guarda una consulta con nombre: al consultarla, se obtiene info
 
 Sirve para simplificar consultas, presentar un subconjunto de datos y ofrecer una interfaz de acceso. En este práctico interesa qué información presenta y cómo se propagan las modificaciones hacia sus tablas base.
 
-```sql
+```mysql
 CREATE VIEW envios500 AS
 SELECT id_proveedor, id_articulo, cantidad
 FROM envio
