@@ -55,6 +55,20 @@ Si hubiera 100 películas y solo 20 fueran de terror, este recorrido examinaría
 
 Una consulta indica el resultado; un plan explica cómo se intenta obtenerlo. Optimizar requiere comparar trabajo y preservar el resultado solicitado. Usar un índice no es automáticamente mejor: recorrer una tabla pequeña puede ser una elección razonable.
 
+### Duda: ¿este punto consiste solamente en usar EXPLAIN y EXPLAIN ANALYZE?
+
+No. Los comandos son las herramientas para ver el plan; el objetivo del punto es entender lo que muestran.
+
+Hay tres cosas que aprender:
+
+1. **Qué es un plan:** los pasos que el motor elige para resolver una consulta.
+2. **Cómo verlo:** con EXPLAIN o EXPLAIN ANALYZE.
+3. **Cómo interpretarlo:** reconocer qué tablas lee, qué condiciones aplica y qué operaciones hace con las filas, como unirlas, ordenarlas o agruparlas.
+
+Por ejemplo, ante `Seq Scan on pelicula` y `Filter: (genero = 'TERROR')`, la interpretación es: «recorre la tabla pelicula, comprueba el género de las filas y devuelve las que son de terror». Poder explicar esa decisión es lo que se busca, además de saber escribir EXPLAIN.
+
+En este primer punto empezamos por esa lectura básica. Los puntos siguientes profundizan en cómo cambiar una consulta o considerar índices para mejorar el trabajo que describe el plan.
+
 ## Temas pendientes
 
 2. Reescrituras equivalentes y comparación de planes.
