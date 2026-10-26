@@ -6,3 +6,4 @@
 * [[TP4 - Triggers]]
 * [[TP5 - Vistas]]
 * [[TP6 - Seguridad]]
+* [[TP7 - Optimización de consultas]]
