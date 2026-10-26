@@ -134,9 +134,117 @@ Para el ejemplo con Sort, una respuesta completa sería: «Se recorre pelicula s
 
 No. EXPLAIN y EXPLAIN ANALYZE permiten observar el plan. El aprendizaje consiste en reconocer sus operaciones, reconstruir el recorrido de las filas y distinguir estimaciones de mediciones. Las reescrituras y decisiones de índices se desarrollarán en sus puntos propios.
 
+## 2. Reescrituras equivalentes y comparación de planes
+
+### Qué buscamos al reescribir
+
+Reescribir una consulta es expresar el mismo pedido con otro SQL. Buscamos facilitar un plan que haga menos trabajo, conservando el resultado. Una consulta más corta o sin subconsultas no es necesariamente más rápida: el optimizador puede transformar dos escrituras en el mismo plan.
+
+Hay dos preguntas distintas, en este orden: ¿la nueva consulta sigue siendo correcta? ¿su ejecución mejora? Una respuesta afirmativa a la segunda no compensa una respuesta negativa a la primera.
+
+### Qué significa conservar el resultado
+
+La equivalencia debe valer para todos los datos permitidos por las restricciones, no solo para el ejemplo actual. Deben conservarse columnas y valores, cantidad de repeticiones de cada fila, comportamiento ante NULL y filas sin coincidencia. Si se pide orden, debe conservarse el ORDER BY; sin él no se garantiza un orden de presentación.
+
+Las claves y restricciones son parte de la justificación. Si una reescritura necesita que id_tarea sea único, hay que comprobarlo en el esquema y explicitarlo.
+
+### Ejemplo completo: ejercicio 2 del TP7
+
+La consulta busca los datos de las tareas que tienen más de cinco voluntarios. Partimos de la consulta del enunciado:
+
+```sql
+SELECT *
+FROM tarea
+WHERE id_tarea IN (
+    SELECT t.id_tarea
+    FROM tarea t
+    INNER JOIN voluntario v ON t.id_tarea = v.id_tarea
+    GROUP BY t.id_tarea
+    HAVING COUNT(v.nro_voluntario) > 5
+);
+```
+
+Su razonamiento lógico es: unir las tareas con sus voluntarios, agrupar por tarea, conservar los identificadores cuyo conteo supera cinco y buscar sus datos en la tarea exterior. Esta explicación del significado no obliga al motor a ejecutar literalmente esos pasos ni a leer físicamente tarea dos veces: eso se comprueba en el plan.
+
+Supongamos que id_tarea es la PK de tarea y nro_voluntario es la PK de voluntario. Cada voluntario unido aporta una fila al grupo de su tarea y su identificador no es NULL.
+
+| Tarea | Voluntarios | ¿Aparece? |
+|---|---:|---|
+| A | 6 | Sí |
+| B | 2 | No |
+| C | 0 | No |
+
+### Primera alternativa: quitar una referencia a tarea
+
+```sql
+SELECT *
+FROM tarea
+WHERE id_tarea IN (
+    SELECT v.id_tarea
+    FROM voluntario v
+    GROUP BY v.id_tarea
+    HAVING COUNT(v.nro_voluntario) > 5
+);
+```
+
+La subconsulta puede contar directamente los voluntarios agrupados por id_tarea. Para decidir qué identificadores superan cinco no necesita atributos de tarea. La consulta exterior ya recupera los datos de las tareas existentes.
+
+Bajo la PK declarada, el join original no multiplica voluntarios dentro de un grupo. Por eso el conteo para cada tarea existente es el mismo en ambas versiones. A sigue teniendo seis, B dos y C ninguna coincidencia que la incluya.
+
+Incluso si hubiera voluntarios con un identificador de tarea inexistente, ese grupo no encontraría una tarea en la consulta exterior. Si hay voluntarios con id_tarea NULL, su grupo tampoco coincide con una PK exterior mediante IN. La equivalencia de este ejemplo no necesita suponer una FK, aunque el esquema puede tenerla.
+
+La mejora propuesta consiste en eliminar una referencia lógica redundante a tarea y permitir contar directamente sobre voluntario. Solo el plan permite comprobar si efectivamente se evita trabajo que la versión original realizaba.
+
+### Segunda alternativa: unir con los grupos ya calculados
+
+```sql
+SELECT t.*
+FROM tarea t
+JOIN (
+    SELECT v.id_tarea
+    FROM voluntario v
+    GROUP BY v.id_tarea
+    HAVING COUNT(v.nro_voluntario) > 5
+) candidatas ON candidatas.id_tarea = t.id_tarea;
+```
+
+También expresa el mismo pedido bajo los supuestos anteriores. La tabla derivada candidatas produce como máximo una fila por id_tarea gracias al GROUP BY; su join no repite cada tarea por la cantidad de voluntarios. Se conserva t.* para devolver solamente las columnas originales.
+
+Esto no demuestra que JOIN sea más rápido que IN. PostgreSQL podría generar planes iguales o muy similares para ambas versiones.
+
+### Cómo comprobar la mejora
+
+1. Justificar primero la equivalencia según las restricciones.
+2. Obtener EXPLAIN de la original y las alternativas.
+3. Comparar accesos a tablas, joins, agrupaciones, filas intermedias y costo total estimado de la raíz. No contar simplemente cuántas líneas tiene cada plan.
+4. Medir las consultas SELECT con EXPLAIN ANALYZE sobre los mismos datos, índices y configuración, sin cambios concurrentes que alteren la comparación.
+5. Contrastar filas reales y estimadas, loops y Execution Time. Repetir las mediciones alternando el orden para reducir el efecto de caché y variaciones de carga.
+
+Si la original ya obtiene el mismo plan que la reescrita, no hay evidencia de una mejora de ejecución; la nueva escritura todavía puede resultar más clara. Si el costo estimado baja, existe una predicción de mejora; si los tiempos medidos mejoran de forma consistente en condiciones comparables, existe evidencia para esos datos y ese entorno.
+
+No se obtuvieron planes ni tiempos locales en esta explicación. Las alternativas son propuestas justificadas, no mejoras medidas.
+
+### Errores que invalidan una reescritura
+
+- **Duplicados:** reemplazar un IN o EXISTS por un join con filas sin agrupar puede repetir cada fila exterior por cada coincidencia. No agregar DISTINCT automáticamente: podría eliminar repeticiones que la consulta original conservaba.
+- **NULL:** NOT IN no es intercambiable sin más con NOT EXISTS. Si la subconsulta contiene NULL, un valor sin coincidencias puede producir UNKNOWN en NOT IN y quedar excluido del WHERE.
+- **Filas sin coincidencia:** sustituir un LEFT JOIN por INNER JOIN puede eliminar filas. Mover condiciones entre ON y WHERE también puede cambiar un outer join.
+- **Conteos y filtros:** COUNT(*) cuenta filas; COUNT(columna) omite los NULL de esa columna. WHERE filtra filas antes de agrupar y HAVING filtra grupos; no se intercambian sin justificarlo.
+
+### Cómo verificar resultados con datos de prueba
+
+En PostgreSQL, A EXCEPT ALL B y B EXCEPT ALL A permiten buscar diferencias conservando las cantidades de duplicados, siempre que las consultas devuelvan columnas compatibles. Ambas diferencias deben quedar vacías. Sirve como comprobación sobre esos datos, no como prueba de equivalencia para todos los estados posibles; tampoco compara el orden.
+
+Probar tareas con cero, cinco y seis voluntarios, además de los casos con NULL que admita el esquema, ayuda a detectar errores en este ejemplo. No se ejecutaron estas comprobaciones sobre las bases del usuario.
+
+### Qué escribir en una resolución
+
+«Bajo la clave primaria de tarea, propongo agrupar voluntario directamente por id_tarea. Se conserva el conteo de cada tarea existente y la consulta exterior recupera sus datos. Se elimina una referencia lógica redundante a tarea. Compararía los planes y las mediciones para determinar si se reduce trabajo; la reescritura por sí sola no demuestra mayor velocidad».
+
+Referencias: [subconsultas y NULL](https://www.postgresql.org/docs/current/functions-subquery.html), [joins, WHERE y agrupamiento](https://www.postgresql.org/docs/current/queries-table-expressions.html), [comparación de planes](https://www.postgresql.org/docs/current/using-explain.html) y [EXCEPT ALL](https://www.postgresql.org/docs/current/queries-union.html).
+
 ## Temas pendientes
 
-2. Reescrituras equivalentes y comparación de planes.
 3. Joins, subconsultas y ensambles innecesarios.
 4. DISTINCT y eliminación de duplicados.
 5. GROUP BY y HAVING.
