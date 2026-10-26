@@ -51,23 +51,88 @@ Seq Scan on pelicula  (cost=0.00..12.50 rows=20 width=40)
 
 Si hubiera 100 películas y solo 20 fueran de terror, este recorrido examinaría las 100 y devolvería 20. Esa diferencia ayuda a distinguir trabajo realizado de resultado obtenido. Los números del fragmento no describen nuestras tablas reales.
 
-### Idea para retener
+### Leer un árbol de operaciones
 
-Una consulta indica el resultado; un plan explica cómo se intenta obtenerlo. Optimizar requiere comparar trabajo y preservar el resultado solicitado. Usar un índice no es automáticamente mejor: recorrer una tabla pequeña puede ser una elección razonable.
+Consideremos ahora la consulta anterior con ORDER BY titulo. Este plan inventado muestra dos operaciones:
 
-### Duda: ¿este punto consiste solamente en usar EXPLAIN y EXPLAIN ANALYZE?
+```text
+Sort  (cost=12.93..12.98 rows=20 width=40)
+  Sort Key: titulo
+  -> Seq Scan on pelicula  (cost=0.00..12.50 rows=20 width=40)
+       Filter: (genero = 'TERROR')
+```
 
-No. Los comandos son las herramientas para ver el plan; el objetivo del punto es entender lo que muestran.
+Para reconstruir el recorrido de las filas, empezar por el hijo más indentado: el Seq Scan produce las películas de terror y Sort recibe esas filas y las ordena por título. La primera línea es la raíz y entrega el resultado final. Esto describe dependencias; no significa que cada nodo deba terminar por completo antes de que otro empiece: algunas operaciones van entregando filas a medida que trabajan.
 
-Hay tres cosas que aprender:
+El costo del padre incluye el de sus hijos. En el ejemplo, el costo total estimado es 12.98; sumar 12.98 y 12.50 contaría parte del trabajo dos veces.
 
-1. **Qué es un plan:** los pasos que el motor elige para resolver una consulta.
-2. **Cómo verlo:** con EXPLAIN o EXPLAIN ANALYZE.
-3. **Cómo interpretarlo:** reconocer qué tablas lee, qué condiciones aplica y qué operaciones hace con las filas, como unirlas, ordenarlas o agruparlas.
+### Reconocer las operaciones habituales
 
-Por ejemplo, ante `Seq Scan on pelicula` y `Filter: (genero = 'TERROR')`, la interpretación es: «recorre la tabla pelicula, comprueba el género de las filas y devuelve las que son de terror». Poder explicar esa decisión es lo que se busca, además de saber escribir EXPLAIN.
+| Nombre en el plan | Cómo interpretarlo |
+|---|---|
+| Seq Scan | Recorre la tabla y aplica los filtros correspondientes. |
+| Index Scan | Usa un índice para localizar filas y accede a la tabla cuando necesita sus datos. |
+| Index Only Scan | Puede obtener los valores del índice, aunque a veces necesita consultar la tabla para verificar visibilidad. |
+| Bitmap Index Scan + Bitmap Heap Scan | Construye un mapa de ubicaciones desde un índice y luego busca las filas en las páginas de la tabla. No implica que el índice sea de tipo Bitmap. |
+| Nested Loop | Para cada fila de una entrada, procesa la otra; esta puede usar un índice. |
+| Hash Join | Construye una estructura hash con una entrada y busca coincidencias de la otra. |
+| Merge Join | Combina entradas ordenadas según las claves de unión; el orden puede provenir de índices o de Sort. |
+| Sort | Ordena filas. |
+| Aggregate / HashAggregate / GroupAggregate | Calcula agregados; puede formar grupos según la consulta y el nodo. |
+| Unique | Elimina duplicados de una entrada ordenada. DISTINCT también puede resolverse mediante HashAggregate. |
 
-En este primer punto empezamos por esa lectura básica. Los puntos siguientes profundizan en cómo cambiar una consulta o considerar índices para mejorar el trabajo que describe el plan.
+No hay una correspondencia fija entre una cláusula SQL y un único nodo. Por ejemplo, ORDER BY puede aprovechar el orden de un índice y no necesitar Sort.
+
+Index Cond identifica una condición usada para acceder por el índice; Filter comprueba una condición sobre las filas que el nodo examina. Tener un índice no garantiza que el motor lo elija.
+
+### Interpretar las mediciones reales
+
+```sql
+EXPLAIN ANALYZE
+SELECT titulo FROM pelicula WHERE genero = 'TERROR';
+```
+
+Salida inventada:
+
+```text
+Seq Scan on pelicula  (cost=0.00..12.50 rows=20 width=40)
+  (actual time=0.010..0.040 rows=18 loops=1)
+  Filter: (genero = 'TERROR')
+  Rows Removed by Filter: 82
+Planning Time: 0.100 ms
+Execution Time: 0.060 ms
+```
+
+La comparación es entre 20 filas estimadas y 18 reales. Se descartaron 82: en este ejemplo se examinaron 100. Los tiempos de actual time están en milisegundos: tiempo hasta la primera fila y hasta completar el nodo. loops indica cuántas veces se ejecutó. Si loops es mayor que 1, las filas y tiempos mostrados son promedios por ejecución; por ejemplo, rows=3 y loops=10 representa aproximadamente 30 filas emitidas en total.
+
+Planning Time corresponde a planificar; Execution Time, a ejecutar con la instrumentación del comando. Los tiempos de nodos padres incluyen trabajo de sus hijos: tampoco deben sumarse indiscriminadamente. EXPLAIN ANALYZE agrega sobrecarga de medición; una ejecución aislada no basta para asegurar que una alternativa siempre es más rápida.
+
+ANALYZE usado solo actualiza estadísticas; EXPLAIN ANALYZE mide la ejecución de la sentencia. Son usos distintos del término.
+
+### Entender por qué se eligió el plan
+
+El optimizador usa estadísticas para estimar cuántas filas producirán las operaciones. Supongamos dos escenarios ilustrativos:
+
+- Hay un millón de películas y diez son de terror: un índice apropiado podría evitar revisar muchas filas.
+- Hay cien películas y noventa son de terror: recorrer la tabla podría ser más conveniente que localizar y buscar casi todas las filas mediante el índice.
+
+La proporción de coincidencias ayuda a razonar sobre la selectividad. No existe un porcentaje universal a partir del cual siempre convenga un índice. También influyen el tamaño, la distribución física y los costos configurados.
+
+Si se estiman 20 filas y salen 18, la estimación es cercana. Si se estiman 20 y salen 200000, conviene investigar las estadísticas y la distribución de los datos: esa diferencia puede afectar la elección de accesos y joins. No demuestra por sí sola que falte un índice.
+
+### Cómo explicar un plan en un ejercicio
+
+1. Identificar qué resultado pide la consulta.
+2. Localizar los accesos a las tablas y sus condiciones.
+3. Seguir las filas hacia los joins, agregaciones, eliminación de duplicados y ordenamientos que existan.
+4. Leer el costo global y las filas estimadas; con ANALYZE, contrastar filas y tiempos reales, considerando loops.
+5. Justificar lo observado con los datos y restricciones disponibles. Sin mediciones no afirmar que una mejora propuesta es más rápida.
+
+Para el ejemplo con Sort, una respuesta completa sería: «Se recorre pelicula secuencialmente y se filtra por TERROR. Se estiman 20 filas de salida. Esas filas se ordenan por titulo. El costo total estimado del plan es 12.98 unidades. Solo con EXPLAIN no conozco ni la duración ni la cantidad real de filas».
+
+### Duda trabajada: ¿solo hay que aprender los dos comandos?
+
+No. EXPLAIN y EXPLAIN ANALYZE permiten observar el plan. El aprendizaje consiste en reconocer sus operaciones, reconstruir el recorrido de las filas y distinguir estimaciones de mediciones. Las reescrituras y decisiones de índices se desarrollarán en sus puntos propios.
 
 ## Temas pendientes
 
@@ -83,4 +148,4 @@ En este primer punto empezamos por esa lectura básica. Los puntos siguientes pr
 
 Enunciado: Practicos/Practico 7 - Optimización de Consultas.docx, dentro de Bases de Datos, fuera del baúl. El práctico propone analizar planes y justificar índices.
 
-Referencia técnica: [PostgreSQL — Using EXPLAIN](https://www.postgresql.org/docs/current/using-explain.html).
+Referencias técnicas: [Using EXPLAIN](https://www.postgresql.org/docs/current/using-explain.html), [comando EXPLAIN](https://www.postgresql.org/docs/current/sql-explain.html) y [estadísticas del optimizador](https://www.postgresql.org/docs/current/planner-stats.html).
