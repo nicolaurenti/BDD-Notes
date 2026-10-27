@@ -5,55 +5,53 @@ tags:
 
 # TP7 - Optimización de consultas
 
-Apunte construido tema por tema a partir de la conversación. Los ejemplos son ilustrativos: no se ejecutó SQL ni se obtuvieron planes de las bases locales.
+Este resumen desarrolla los ocho puntos acordados. Cada punto sigue la misma estructura: **idea central → cómo razonarlo → ejemplo → errores frecuentes → qué recordar**. Los ejemplos breves explican conceptos; la resolución de los ejercicios y los planes comprobados se encuentran en [[Resolución del TP7 - Optimización de consultas]].
+
+## Recorrido de lectura
+
+1. [Planes de ejecución](#1-planes-de-ejecución).
+2. [Reescrituras equivalentes y comparación de planes](#2-reescrituras-equivalentes-y-comparación-de-planes).
+3. [Joins, subconsultas y ensambles innecesarios](#3-joins-subconsultas-y-ensambles-innecesarios).
+4. [DISTINCT y eliminación de duplicados](#4-distinct-y-eliminación-de-duplicados).
+5. [Agrupamiento y conteos](#5-agrupamiento-y-conteos).
+6. [Índices simples y compuestos](#6-índices-simples-y-compuestos).
+7. [Índices según las condiciones de búsqueda](#7-índices-según-las-condiciones-de-búsqueda).
+8. [Árboles B+ y Bitmap](#8-árboles-b-y-bitmap).
 
 ## 1. Planes de ejecución
 
-### Qué es un plan
+### Idea central
 
-SQL expresa qué resultado queremos. El plan de ejecución describe las operaciones que el motor elige para obtenerlo: acceder a tablas, filtrar, unir, ordenar o agrupar.
+SQL expresa el resultado solicitado. El **plan de ejecución** describe las operaciones elegidas para obtenerlo: acceder a tablas, filtrar, unir, agrupar, eliminar duplicados y ordenar. El optimizador busca una estrategia razonablemente eficiente; no garantiza encontrar la mejor entre todas las posibles.
 
-Por ejemplo, para buscar las películas de terror:
+### Cómo razonarlo
 
-```sql
-SELECT titulo
-FROM pelicula
-WHERE genero = 'TERROR';
-```
+La cátedra distingue dos técnicas que se combinan:
 
-El motor podría recorrer la tabla y comprobar el género de cada película. Si existe un índice adecuado, también podría usarlo para localizar coincidencias. La consulta expresa el mismo pedido; cambia el trabajo necesario para resolverlo. Sin ORDER BY, no se garantiza el orden de presentación.
+- **Heurísticas:** transformar la consulta para reducir trabajo, por ejemplo filtrar pronto y evitar productos cartesianos innecesarios.
+- **Estimación de costos:** comparar estrategias según estadísticas y estructuras disponibles.
 
-### Qué decide el optimizador
+Para estimar, interesan cantidad de filas y bloques, tamaño de filas, valores distintos, distribución de valores e índices existentes. Cardinalidad puede significar cantidad de filas de una relación; cuando hablamos de la cardinalidad de una columna nos referimos a cuántos valores distintos contiene. Conviene indicar cuál de ambos sentidos se usa.
 
-El optimizador compara alternativas usando estimaciones de costo. Influyen el tamaño de las tablas, las estadísticas de los datos y los índices disponibles. No basta con escribir menos SQL para que una consulta sea más rápida.
+| Herramienta | Qué permite observar |
+|---|---|
+| EXPLAIN SELECT ... | Plan y estimaciones sin ejecutar el SELECT. |
+| EXPLAIN ANALYZE SELECT ... | Plan más mediciones obtenidas al ejecutar el SELECT. |
+| ANALYZE tabla | Actualiza estadísticas; es un comando distinto de EXPLAIN ANALYZE. |
 
-### Cómo observarlo
+Para leer un árbol, seguir las filas desde sus nodos de acceso hacia los padres. La indentación expresa dependencias. No significa que cada nodo termine antes de que empiece su padre: algunas operaciones entregan filas progresivamente.
+
+### Ejemplo
 
 ```sql
 EXPLAIN
-SELECT titulo FROM pelicula WHERE genero = 'TERROR';
+SELECT titulo
+FROM pelicula
+WHERE genero = 'TERROR'
+ORDER BY titulo;
 ```
 
-EXPLAIN muestra el plan estimado sin ejecutar la consulta. EXPLAIN ANALYZE sí la ejecuta y agrega mediciones reales. Para entender un plan conviene identificar primero los accesos a las tablas y después las operaciones que reciben esas filas; el plan tiene estructura de árbol.
-
-Un fragmento inventado para practicar la lectura:
-
-```text
-Seq Scan on pelicula  (cost=0.00..12.50 rows=20 width=40)
-  Filter: (genero = 'TERROR')
-```
-
-- Seq Scan: recorre la tabla.
-- Filter: comprueba la condición.
-- cost: costo inicial y total estimados, en unidades del optimizador, no milisegundos.
-- rows: filas que se estima que saldrán de ese nodo, no todas las examinadas.
-- width: tamaño medio estimado de cada fila de salida, en bytes.
-
-Si hubiera 100 películas y solo 20 fueran de terror, este recorrido examinaría las 100 y devolvería 20. Esa diferencia ayuda a distinguir trabajo realizado de resultado obtenido. Los números del fragmento no describen nuestras tablas reales.
-
-### Leer un árbol de operaciones
-
-Consideremos ahora la consulta anterior con ORDER BY titulo. Este plan inventado muestra dos operaciones:
+Plan **ilustrativo**, con números inventados:
 
 ```text
 Sort  (cost=12.93..12.98 rows=20 width=40)
@@ -62,330 +60,336 @@ Sort  (cost=12.93..12.98 rows=20 width=40)
        Filter: (genero = 'TERROR')
 ```
 
-Para reconstruir el recorrido de las filas, empezar por el hijo más indentado: el Seq Scan produce las películas de terror y Sort recibe esas filas y las ordena por título. La primera línea es la raíz y entrega el resultado final. Esto describe dependencias; no significa que cada nodo deba terminar por completo antes de que otro empiece: algunas operaciones van entregando filas a medida que trabajan.
+El recorrido produce películas de terror y Sort ordena esas coincidencias por título. Si hubiera cien películas y veinte coincidieran, el recorrido examinaría cien y el ordenamiento recibiría veinte.
 
-El costo del padre incluye el de sus hijos. En el ejemplo, el costo total estimado es 12.98; sumar 12.98 y 12.50 contaría parte del trabajo dos veces.
+- **cost=a..b:** costo inicial y total estimados, en unidades del optimizador, no milisegundos.
+- **rows:** filas estimadas de salida del nodo, no necesariamente todas las examinadas.
+- **width:** tamaño medio estimado de la fila de salida en bytes.
 
-### Reconocer las operaciones habituales
+Con ANALYZE podría agregarse `actual time=0.010..0.040 rows=18 loops=1`: primera fila a 0.010 ms, finalización a 0.040 ms, dieciocho filas reales y una ejecución del nodo. Si aparecieran 82 filas descartadas por el filtro, se habrían examinado cien. Con varios loops, filas y tiempos se muestran como promedios por ejecución; rows=3 y loops=10 equivale aproximadamente a treinta filas emitidas en total.
 
-| Nombre en el plan | Cómo interpretarlo |
+Planning Time corresponde a planificar y Execution Time a la ejecución instrumentada. La instrumentación agrega sobrecarga. Index Cond señala una condición usada para acceder por el índice; Filter comprueba una condición sobre las filas examinadas por el nodo.
+
+| Nodo habitual | Trabajo que representa |
 |---|---|
-| Seq Scan | Recorre la tabla y aplica los filtros correspondientes. |
-| Index Scan | Usa un índice para localizar filas y accede a la tabla cuando necesita sus datos. |
-| Index Only Scan | Puede obtener los valores del índice, aunque a veces necesita consultar la tabla para verificar visibilidad. |
-| Bitmap Index Scan + Bitmap Heap Scan | Construye un mapa de ubicaciones desde un índice y luego busca las filas en las páginas de la tabla. No implica que el índice sea de tipo Bitmap. |
-| Nested Loop | Para cada fila de una entrada, procesa la otra; esta puede usar un índice. |
-| Hash Join | Construye una estructura hash con una entrada y busca coincidencias de la otra. |
-| Merge Join | Combina entradas ordenadas según las claves de unión; el orden puede provenir de índices o de Sort. |
-| Sort | Ordena filas. |
-| Aggregate / HashAggregate / GroupAggregate | Calcula agregados; puede formar grupos según la consulta y el nodo. |
-| Unique | Elimina duplicados de una entrada ordenada. DISTINCT también puede resolverse mediante HashAggregate. |
+| Seq Scan | Recorrido de la tabla. |
+| Index Scan | Acceso mediante índice y búsqueda de datos en la tabla. |
+| Index Only Scan | Puede obtener los valores del índice; aún puede consultar la tabla para verificar visibilidad. |
+| Bitmap Index Scan + Bitmap Heap Scan | Obtención de ubicaciones desde índices y acceso por páginas de la tabla. |
+| Nested Loop | Procesar la otra entrada para cada fila de una entrada; puede aprovechar índices. |
+| Hash Join | Construir una estructura hash y buscar coincidencias de la otra entrada. |
+| Merge Join | Combinar entradas ordenadas por las claves de unión. |
+| Sort | Ordenar filas. |
+| Aggregate / HashAggregate / GroupAggregate | Calcular agregados y, cuando corresponde, agrupar. |
+| Unique | Eliminar duplicados de una entrada ordenada. |
 
-No hay una correspondencia fija entre una cláusula SQL y un único nodo. Por ejemplo, ORDER BY puede aprovechar el orden de un índice y no necesitar Sort.
+### Errores frecuentes
 
-Index Cond identifica una condición usada para acceder por el índice; Filter comprueba una condición sobre las filas que el nodo examina. Tener un índice no garantiza que el motor lo elija.
+Sumar los costos totales de todos los nodos cuenta trabajo repetido: un padre ya incluye el de sus hijos. Lo mismo impide sumar indiscriminadamente sus tiempos. Tampoco un Seq Scan demuestra un problema: para una tabla pequeña puede ser conveniente. Una diferencia grande entre filas estimadas y reales invita a revisar estadísticas y distribución, no demuestra por sí sola que falte un índice.
 
-### Interpretar las mediciones reales
+### Qué recordar
 
-```sql
-EXPLAIN ANALYZE
-SELECT titulo FROM pelicula WHERE genero = 'TERROR';
-```
-
-Salida inventada:
-
-```text
-Seq Scan on pelicula  (cost=0.00..12.50 rows=20 width=40)
-  (actual time=0.010..0.040 rows=18 loops=1)
-  Filter: (genero = 'TERROR')
-  Rows Removed by Filter: 82
-Planning Time: 0.100 ms
-Execution Time: 0.060 ms
-```
-
-La comparación es entre 20 filas estimadas y 18 reales. Se descartaron 82: en este ejemplo se examinaron 100. Los tiempos de actual time están en milisegundos: tiempo hasta la primera fila y hasta completar el nodo. loops indica cuántas veces se ejecutó. Si loops es mayor que 1, las filas y tiempos mostrados son promedios por ejecución; por ejemplo, rows=3 y loops=10 representa aproximadamente 30 filas emitidas en total.
-
-Planning Time corresponde a planificar; Execution Time, a ejecutar con la instrumentación del comando. Los tiempos de nodos padres incluyen trabajo de sus hijos: tampoco deben sumarse indiscriminadamente. EXPLAIN ANALYZE agrega sobrecarga de medición; una ejecución aislada no basta para asegurar que una alternativa siempre es más rápida.
-
-ANALYZE usado solo actualiza estadísticas; EXPLAIN ANALYZE mide la ejecución de la sentencia. Son usos distintos del término.
-
-### Entender por qué se eligió el plan
-
-El optimizador usa estadísticas para estimar cuántas filas producirán las operaciones. Supongamos dos escenarios ilustrativos:
-
-- Hay un millón de películas y diez son de terror: un índice apropiado podría evitar revisar muchas filas.
-- Hay cien películas y noventa son de terror: recorrer la tabla podría ser más conveniente que localizar y buscar casi todas las filas mediante el índice.
-
-La proporción de coincidencias ayuda a razonar sobre la selectividad. No existe un porcentaje universal a partir del cual siempre convenga un índice. También influyen el tamaño, la distribución física y los costos configurados.
-
-Si se estiman 20 filas y salen 18, la estimación es cercana. Si se estiman 20 y salen 200000, conviene investigar las estadísticas y la distribución de los datos: esa diferencia puede afectar la elección de accesos y joins. No demuestra por sí sola que falte un índice.
-
-### Cómo explicar un plan en un ejercicio
-
-1. Identificar qué resultado pide la consulta.
-2. Localizar los accesos a las tablas y sus condiciones.
-3. Seguir las filas hacia los joins, agregaciones, eliminación de duplicados y ordenamientos que existan.
-4. Leer el costo global y las filas estimadas; con ANALYZE, contrastar filas y tiempos reales, considerando loops.
-5. Justificar lo observado con los datos y restricciones disponibles. Sin mediciones no afirmar que una mejora propuesta es más rápida.
-
-Para el ejemplo con Sort, una respuesta completa sería: «Se recorre pelicula secuencialmente y se filtra por TERROR. Se estiman 20 filas de salida. Esas filas se ordenan por titulo. El costo total estimado del plan es 12.98 unidades. Solo con EXPLAIN no conozco ni la duración ni la cantidad real de filas».
-
-### Duda trabajada: ¿solo hay que aprender los dos comandos?
-
-No. EXPLAIN y EXPLAIN ANALYZE permiten observar el plan. El aprendizaje consiste en reconocer sus operaciones, reconstruir el recorrido de las filas y distinguir estimaciones de mediciones. Las reescrituras y decisiones de índices se desarrollarán en sus puntos propios.
+El punto no consiste solo en escribir EXPLAIN: hay que describir el recorrido de las filas, distinguir estimaciones de mediciones y justificar la estrategia observada. [Referencia técnica](https://www.postgresql.org/docs/15/using-explain.html).
 
 ## 2. Reescrituras equivalentes y comparación de planes
 
-### Qué buscamos al reescribir
+### Idea central
 
-Reescribir una consulta es expresar el mismo pedido con otro SQL. Buscamos facilitar un plan que haga menos trabajo, conservando el resultado. Una consulta más corta o sin subconsultas no es necesariamente más rápida: el optimizador puede transformar dos escrituras en el mismo plan.
+Reescribir es expresar el mismo pedido con otro SQL para facilitar una ejecución eficiente. Primero se demuestra que conserva el resultado y después se comprueba si mejora la ejecución.
 
-Hay dos preguntas distintas, en este orden: ¿la nueva consulta sigue siendo correcta? ¿su ejecución mejora? Una respuesta afirmativa a la segunda no compensa una respuesta negativa a la primera.
+### Cómo razonarlo
 
-### Qué significa conservar el resultado
+Las filminas usan álgebra relacional: selección σ filtra filas, proyección π conserva atributos y ensamble ⋈ relaciona filas. Las heurísticas principales son adelantar filtros, aplicar primero los más restrictivos y transportar solo columnas necesarias. Hay que conservar también las columnas que todavía se necesitan para unir, filtrar o agrupar.
 
-La equivalencia debe valer para todos los datos permitidos por las restricciones, no solo para el ejemplo actual. Deben conservarse columnas y valores, cantidad de repeticiones de cada fila, comportamiento ante NULL y filas sin coincidencia. Si se pide orden, debe conservarse el ORDER BY; sin él no se garantiza un orden de presentación.
+Por ejemplo, `σcargo='investigador'(E ⋈ T)` puede transformarse en `(σcargo='investigador'(E)) ⋈ T` porque el filtro depende solo de E. Para inner joins, conmutatividad y asociatividad permiten explorar diferentes órdenes conservando sus condiciones. No extender estas reglas sin más a outer joins, agregaciones o LIMIT.
 
-Las claves y restricciones son parte de la justificación. Si una reescritura necesita que id_tarea sea único, hay que comprobarlo en el esquema y explicitarlo.
+La equivalencia SQL conserva columnas, valores, repeticiones, comportamiento ante NULL y el orden explícitamente solicitado. El álgebra clásica trabaja con conjuntos; SQL conserva duplicados salvo operaciones que los eliminan. Una transformación algebraica requiere revisar esa diferencia.
 
-### Ejemplo completo: ejercicio 2 del TP7
+### Ejemplo
 
-La consulta busca los datos de las tareas que tienen más de cinco voluntarios. Partimos de la consulta del enunciado:
-
-```sql
-SELECT *
-FROM tarea
-WHERE id_tarea IN (
-    SELECT t.id_tarea
-    FROM tarea t
-    INNER JOIN voluntario v ON t.id_tarea = v.id_tarea
-    GROUP BY t.id_tarea
-    HAVING COUNT(v.nro_voluntario) > 5
-);
-```
-
-Su razonamiento lógico es: unir las tareas con sus voluntarios, agrupar por tarea, conservar los identificadores cuyo conteo supera cinco y buscar sus datos en la tarea exterior. Esta explicación del significado no obliga al motor a ejecutar literalmente esos pasos ni a leer físicamente tarea dos veces: eso se comprueba en el plan.
-
-Supongamos que id_tarea es la PK de tarea y nro_voluntario es la PK de voluntario. Cada voluntario unido aporta una fila al grupo de su tarea y su identificador no es NULL.
-
-| Tarea | Voluntarios | ¿Aparece? |
-|---|---:|---|
-| A | 6 | Sí |
-| B | 2 | No |
-| C | 0 | No |
-
-### Primera alternativa: quitar una referencia a tarea
-
-```sql
-SELECT *
-FROM tarea
-WHERE id_tarea IN (
-    SELECT v.id_tarea
-    FROM voluntario v
-    GROUP BY v.id_tarea
-    HAVING COUNT(v.nro_voluntario) > 5
-);
-```
-
-La subconsulta puede contar directamente los voluntarios agrupados por id_tarea. Para decidir qué identificadores superan cinco no necesita atributos de tarea. La consulta exterior ya recupera los datos de las tareas existentes.
-
-Bajo la PK declarada, el join original no multiplica voluntarios dentro de un grupo. Por eso el conteo para cada tarea existente es el mismo en ambas versiones. A sigue teniendo seis, B dos y C ninguna coincidencia que la incluya.
-
-Incluso si hubiera voluntarios con un identificador de tarea inexistente, ese grupo no encontraría una tarea en la consulta exterior. Si hay voluntarios con id_tarea NULL, su grupo tampoco coincide con una PK exterior mediante IN. La equivalencia de este ejemplo no necesita suponer una FK, aunque el esquema puede tenerla.
-
-La mejora propuesta consiste en eliminar una referencia lógica redundante a tarea y permitir contar directamente sobre voluntario. Solo el plan permite comprobar si efectivamente se evita trabajo que la versión original realizaba.
-
-### Segunda alternativa: unir con los grupos ya calculados
+En vez de unir tarea con voluntario dentro de una subconsulta para contar, puede agruparse voluntario directamente:
 
 ```sql
 SELECT t.*
 FROM tarea t
-JOIN (
+WHERE t.id_tarea IN (
     SELECT v.id_tarea
     FROM voluntario v
     GROUP BY v.id_tarea
-    HAVING COUNT(v.nro_voluntario) > 5
-) candidatas ON candidatas.id_tarea = t.id_tarea;
+    HAVING COUNT(*) > 5
+);
 ```
 
-También expresa el mismo pedido bajo los supuestos anteriores. La tabla derivada candidatas produce como máximo una fila por id_tarea gracias al GROUP BY; su join no repite cada tarea por la cantidad de voluntarios. Se conserva t.* para devolver solamente las columnas originales.
+Con id_tarea como PK de tarea y nro_voluntario como PK de voluntario, el conteo coincide con COUNT(v.nro_voluntario) del join original. La consulta exterior recupera las tareas existentes. La resolución explica ambas alternativas y sus planes.
 
-Esto no demuestra que JOIN sea más rápido que IN. PostgreSQL podría generar planes iguales o muy similares para ambas versiones.
+Para comparar, usar los mismos datos, índices y configuración: EXPLAIN muestra la predicción; EXPLAIN ANALYZE aporta evidencia de ejecución. Revisar accesos, filas intermedias, loops y tiempo total. Repetir alternando el orden reduce la influencia de caché y carga.
 
-### Cómo comprobar la mejora
+En datos de prueba, `A EXCEPT ALL B` y `B EXCEPT ALL A` deben quedar vacíos. Esto comprueba diferencias y multiplicidades sobre esos datos, no prueba equivalencia universal ni compara el orden.
 
-1. Justificar primero la equivalencia según las restricciones.
-2. Obtener EXPLAIN de la original y las alternativas.
-3. Comparar accesos a tablas, joins, agrupaciones, filas intermedias y costo total estimado de la raíz. No contar simplemente cuántas líneas tiene cada plan.
-4. Medir las consultas SELECT con EXPLAIN ANALYZE sobre los mismos datos, índices y configuración, sin cambios concurrentes que alteren la comparación.
-5. Contrastar filas reales y estimadas, loops y Execution Time. Repetir las mediciones alternando el orden para reducir el efecto de caché y variaciones de carga.
+### Errores frecuentes
 
-Si la original ya obtiene el mismo plan que la reescrita, no hay evidencia de una mejora de ejecución; la nueva escritura todavía puede resultar más clara. Si el costo estimado baja, existe una predicción de mejora; si los tiempos medidos mejoran de forma consistente en condiciones comparables, existe evidencia para esos datos y ese entorno.
+Menos SQL no implica menos trabajo. Dos escrituras pueden producir el mismo plan. Cambiar IN por JOIN puede introducir duplicados; cambiar NOT IN por NOT EXISTS puede cambiar el efecto de NULL. Una ejecución más rápida no demuestra que siempre lo será.
 
-No se obtuvieron planes ni tiempos locales en esta explicación. Las alternativas son propuestas justificadas, no mejoras medidas.
+### Qué recordar
 
-### Errores que invalidan una reescritura
-
-- **Duplicados:** reemplazar un IN o EXISTS por un join con filas sin agrupar puede repetir cada fila exterior por cada coincidencia. No agregar DISTINCT automáticamente: podría eliminar repeticiones que la consulta original conservaba.
-- **NULL:** NOT IN no es intercambiable sin más con NOT EXISTS. Si la subconsulta contiene NULL, un valor sin coincidencias puede producir UNKNOWN en NOT IN y quedar excluido del WHERE.
-- **Filas sin coincidencia:** sustituir un LEFT JOIN por INNER JOIN puede eliminar filas. Mover condiciones entre ON y WHERE también puede cambiar un outer join.
-- **Conteos y filtros:** COUNT(*) cuenta filas; COUNT(columna) omite los NULL de esa columna. WHERE filtra filas antes de agrupar y HAVING filtra grupos; no se intercambian sin justificarlo.
-
-### Cómo verificar resultados con datos de prueba
-
-En PostgreSQL, A EXCEPT ALL B y B EXCEPT ALL A permiten buscar diferencias conservando las cantidades de duplicados, siempre que las consultas devuelvan columnas compatibles. Ambas diferencias deben quedar vacías. Sirve como comprobación sobre esos datos, no como prueba de equivalencia para todos los estados posibles; tampoco compara el orden.
-
-Probar tareas con cero, cinco y seis voluntarios, además de los casos con NULL que admita el esquema, ayuda a detectar errores en este ejemplo. No se ejecutaron estas comprobaciones sobre las bases del usuario.
-
-### Qué escribir en una resolución
-
-«Bajo la clave primaria de tarea, propongo agrupar voluntario directamente por id_tarea. Se conserva el conteo de cada tarea existente y la consulta exterior recupera sus datos. Se elimina una referencia lógica redundante a tarea. Compararía los planes y las mediciones para determinar si se reduce trabajo; la reescritura por sí sola no demuestra mayor velocidad».
-
-Referencias: [subconsultas y NULL](https://www.postgresql.org/docs/current/functions-subquery.html), [joins, WHERE y agrupamiento](https://www.postgresql.org/docs/current/queries-table-expressions.html), [comparación de planes](https://www.postgresql.org/docs/current/using-explain.html) y [EXCEPT ALL](https://www.postgresql.org/docs/current/queries-union.html).
+**Corrección → propuesta → plan → medición → conclusión limitada a la evidencia.** [Reglas de expresiones de tablas](https://www.postgresql.org/docs/15/queries-table-expressions.html).
 
 ## 3. Joins, subconsultas y ensambles innecesarios
 
-### Elegir según lo que pide la consulta
+### Idea central
 
-Un join combina filas relacionadas. Una subconsulta puede proporcionar valores, una tabla derivada o una condición de existencia. Las formas no tienen una jerarquía fija de rendimiento: primero expresar correctamente el pedido y después comparar planes.
+Cada tabla debe aportar datos, filtros, comprobación de existencia, multiplicidad o una conexión necesaria. Que no aparezca en SELECT no demuestra que sobre.
 
-| Necesidad | Forma que expresa directamente el pedido |
+### Cómo razonarlo
+
+| Pedido | Forma natural de expresarlo |
 |---|---|
-| Devolver datos de ambos lados o cada pareja coincidente | JOIN |
-| Devolver filas de un lado que tienen alguna coincidencia | EXISTS o IN |
-| Devolver filas sin coincidencias | NOT EXISTS |
-| Combinar con un resultado previamente agrupado | JOIN con una tabla derivada |
+| Datos de ambos lados o cada pareja coincidente | JOIN. |
+| Filas con alguna coincidencia | EXISTS o IN. |
+| Filas sin coincidencias | NOT EXISTS. |
+| Relacionar con grupos ya calculados | JOIN con tabla derivada. |
 
-Esta tabla orienta la escritura; no garantiza qué alternativa será más rápida.
+Para quitar un inner join sin alterar filas, una condición suficiente es garantizar exactamente una coincidencia: FK válida y no nullable para existencia, y PK/UNIQUE de destino para unicidad. Deben comprobarse todas las columnas de una clave compuesta. Las restricciones deben cumplirse en el estado consultado.
 
-### Ejemplo del ejercicio 3.a
+Una tabla puente, un filtro suyo o una columna de salida impiden retirarla directamente. Si la FK admite NULL, el join excluye esas filas; al retirarlo puede ser necesario conservar `IS NOT NULL`.
 
-El práctico pide los empleados investigadores que trabajan en algún proyecto:
+### Ejemplo
 
-```sql
-SELECT DISTINCT e.*
-FROM empleado e
-JOIN trabaja_en t ON e.id_empleado = t.id_empleado
-JOIN proyecto p ON p.cod_proyecto = t.cod_proyecto
-WHERE e.cargo = 'investigador';
-```
-
-Para razonar, supongamos PK en empleado.id_empleado y proyecto.cod_proyecto, y PK compuesta (id_empleado, cod_proyecto) en trabaja_en. Cuando usemos la integridad referencial, supondremos que las FK se cumplen en los datos consultados.
-
-Empleado aporta los datos de salida y el filtro por cargo. Trabaja_en demuestra la participación. Proyecto solo verifica en esta consulta que el proyecto referenciado existe: no aporta columnas al resultado ni filtros adicionales.
-
-### Cuándo se puede quitar proyecto
-
-Si trabaja_en.cod_proyecto tiene una FK válida hacia proyecto.cod_proyecto y es NOT NULL, toda participación encuentra exactamente un proyecto: la FK asegura existencia y la PK del destino asegura unicidad. El join no descarta ni multiplica participaciones. Puede retirarse:
-
-```sql
-SELECT DISTINCT e.*
-FROM empleado e
-JOIN trabaja_en t ON e.id_empleado = t.id_empleado
-WHERE e.cargo = 'investigador';
-```
-
-En este esquema hipotético, cod_proyecto ya es NOT NULL por pertenecer a la PK compuesta. No alcanza con asumir una FK: hay que comprobar las restricciones del esquema del ejercicio.
-
-La diferencia entre existencia y unicidad es importante: sin existencia garantizada el join puede excluir huérfanos; sin unicidad puede multiplicar coincidencias.
-
-### Situaciones en las que no se puede quitar sin más
-
-- Si cod_proyecto admite NULL, la FK puede permitir esa fila y el INNER JOIN original la excluye. En un esquema así, al quitar proyecto habría que conservar ese descarte mediante t.cod_proyecto IS NOT NULL, siempre que las restantes condiciones aseguren la equivalencia.
-- Si hay referencias inexistentes, quitar el join puede incorporar empleados que antes no aparecían.
-- Si se filtra por p.nombre = 'IA', proyecto decide qué participaciones cuentan: se necesita consultar esa información.
-- Si se devuelve p.nombre, proyecto aporta un dato de salida.
-- Si proyecto conecta dos tablas que no tienen otro enlace equivalente, funciona como puente: no es prescindible solo porque no aparezca en SELECT.
-
-Para una FK compuesta debe verificarse la correspondencia de todas las columnas y su política de NULL. Una igualdad sobre una parte de la clave no garantiza una única coincidencia.
-
-En la consulta original, empleado no puede retirarse directamente: se necesitan e.* y e.cargo. Trabaja_en tampoco: sin ella se perdería la condición de participar en algún proyecto.
-
-### Evitar multiplicaciones cuando solo interesa existencia
-
-Supongamos estas participaciones ilustrativas:
-
-| Empleado | Cargo | Proyectos |
-|---|---|---|
-| Ana | investigador | 10 y 20 |
-| Bruno | investigador | 10 |
-| Carla | investigador | ninguno |
-
-El join con trabaja_en produce Ana dos veces y Bruno una vez. DISTINCT devuelve Ana y Bruno una sola vez.
-
-Podemos expresar directamente «tiene al menos una participación»:
+Para investigadores que participan en algún proyecto:
 
 ```sql
 SELECT e.*
 FROM empleado e
 WHERE e.cargo = 'investigador'
   AND EXISTS (
-      SELECT 1
-      FROM trabaja_en t
+      SELECT 1 FROM trabaja_en t
       WHERE t.id_empleado = e.id_empleado
   );
 ```
 
-Bajo los supuestos de FK/NOT NULL anteriores, esta consulta conserva el resultado de la original. EXISTS conserva cada fila exterior que tiene alguna coincidencia; no genera una copia por cada participación. Como e.* incluye la PK, no hay empleados distintos con la misma fila completa: aquí no se necesita DISTINCT.
+Ana participa en dos proyectos y Bruno en uno: un join produce Ana, Ana y Bruno; EXISTS conserva una fila exterior por empleado que participa. SELECT 1 expresa existencia; no devuelve un 1 en la salida exterior. La referencia a e hace correlacionada la subconsulta, pero no obliga a ejecutar una búsqueda completa por empleado: el motor puede transformarla en un semijoin.
 
-SELECT 1 no significa que se devuelva el número 1 en el resultado exterior; en este EXISTS simple solo interesa que haya una fila. La referencia a e.id_empleado hace que la subconsulta sea correlacionada: su condición depende del empleado exterior. Esto describe su significado, no obliga a ejecutar una subconsulta completa por cada empleado; PostgreSQL puede transformarla en un plan de semijoin.
+La alternativa con `e.id_empleado IN (SELECT t.id_empleado FROM trabaja_en t)` también expresa pertenencia sin multiplicar la fila exterior. Con NOT EXISTS se selecciona la ausencia. NOT IN exige revisar NULL; puede producir UNKNOWN cuando la subconsulta contiene uno.
 
-Si se proyectara solamente e.nombre, dos empleados distintos llamados Ana podrían producir dos filas iguales con EXISTS; SELECT DISTINCT e.nombre produciría una sola. La equivalencia depende de la proyección y de sus duplicados.
+Un LEFT JOIN más `WHERE columna_derecha IS NULL` expresa ausencia si esa columna no puede ser NULL en una coincidencia real. Una columna nullable ajena a la condición puede confundir «sin coincidencia» con «coincidencia cuyo dato es NULL».
 
-### Otra alternativa: IN
+### Errores frecuentes
+
+No retirar proyecto si se filtra por su nombre. No retirar trabaja_en si es quien demuestra participación. No suponer que JOIN siempre supera a EXISTS o IN. Un semijoin o anti join es una estrategia posible, no un nodo garantizado. Cambiar comas por JOIN ... ON no fuerza por sí solo un orden físico ni una mejora.
+
+### Qué recordar
+
+Justificar lo que aporta cada tabla y qué garantiza que quitarla no cambie el resultado. [Subconsultas](https://www.postgresql.org/docs/current/functions-subquery.html) y [orden de joins](https://www.postgresql.org/docs/current/explicit-joins.html).
+
+## 4. DISTINCT y eliminación de duplicados
+
+### Idea central
+
+DISTINCT conserva una sola copia de cada combinación completa de valores seleccionados. No elimina «empleados repetidos» en abstracto: compara exactamente las columnas del SELECT.
+
+### Cómo razonarlo
+
+La PK de una tabla evita duplicados en ella, pero un join uno a muchos puede repetir sus columnas. Antes de retirar DISTINCT, demostrar que la proyección no se repetirá.
+
+El motor puede eliminar duplicados ordenando y aplicando Unique o usando agrupamiento hash. Ambas alternativas consumen recursos; si el conjunto es grande pueden necesitar más memoria o trabajo en disco. Un índice o un orden ya disponible puede ayudar, pero no garantiza que desaparezca el trabajo.
+
+### Ejemplo
+
+Hay dos empleados diferentes llamados Ana; uno participa en dos proyectos y el otro en uno:
+
+| SELECT sobre el join | Resultado |
+|---|---|
+| e.id_empleado, e.nombre | (1,Ana), (1,Ana), (2,Ana). |
+| DISTINCT e.id_empleado, e.nombre | (1,Ana), (2,Ana). |
+| DISTINCT e.nombre | Una sola fila Ana. |
+
+Con EXISTS y `SELECT e.*`, una fila por empleado y su PK en la salida hacen innecesario DISTINCT. Si se devuelve solo nombre, EXISTS podría producir dos Ana: no es equivalente a DISTINCT nombre.
+
+### Errores frecuentes
+
+Agregar DISTINCT para ocultar un join mal planteado puede encubrir el error y agregar costo. Tampoco puede retirarse porque «hay claves primarias»: importa la multiplicidad después de unir y proyectar. Para eliminar duplicados, dos NULL se consideran iguales a estos efectos; no se aplica la lógica de `NULL = NULL` de un WHERE.
+
+### Qué recordar
+
+Preguntar **qué entidad quiero contar o devolver**, qué puede repetirla y si solo necesito existencia. DISTINCT tiene un significado y un costo, no es un arreglo automático. [Referencia técnica](https://www.postgresql.org/docs/15/queries-select-lists.html).
+
+## 5. Agrupamiento y conteos
+
+### Idea central
+
+GROUP BY reúne filas que comparten claves; los agregados resumen cada grupo. WHERE filtra filas antes del agrupamiento; HAVING filtra grupos según lo calculado.
+
+### Cómo razonarlo
+
+Primero identificar la unidad: ¿personas, participaciones o grupos distintos? Después comprobar si los joins multiplican esa unidad.
+
+| Expresión | Qué cuenta |
+|---|---|
+| COUNT(*) | Todas las filas del grupo. |
+| COUNT(columna) | Filas donde esa columna no es NULL. |
+| COUNT(DISTINCT columna) | Valores distintos no NULL de esa columna. |
+
+Una restricción como «más de dos grupos exclusivos» significa tres o más; filtrar por tipo debe ocurrir antes del conteo. Las claves compuestas deben conservarse completas para no mezclar usuarios diferentes.
+
+### Ejemplo
 
 ```sql
-SELECT e.*
-FROM empleado e
-WHERE e.cargo = 'investigador'
-  AND e.id_empleado IN (
-      SELECT t.id_empleado FROM trabaja_en t
-  );
+SELECT i.tipo_usuario, i.cod_usuario
+FROM integra i
+JOIN gr_exclusivo ge ON ge.nro_grupo = i.nro_grupo
+GROUP BY i.tipo_usuario, i.cod_usuario
+HAVING COUNT(*) > 2;
 ```
 
-En este uso positivo de IN dentro de WHERE, se seleccionan los empleados cuyo identificador coincide con alguna participación. Los identificadores repetidos de la subconsulta no repiten la fila exterior. Puede resultar equivalente a EXISTS y producir un plan parecido; no hay que convertir siempre IN en JOIN.
+Si la PK de integra es (tipo_usuario,cod_usuario,nro_grupo) y gr_exclusivo tiene una fila por grupo, cada fila del join representa una pertenencia a un grupo exclusivo distinto. Un usuario con tres aparece; uno con dos no.
 
-### Buscar ausencia y tratar NULL
+Puede agruparse esta relación estrecha primero y recién después unir con usuario para obtener apellido y nombre. Así se evita transportar nombres por todo el agrupamiento. Es una propuesta de reducción de trabajo, no una garantía de un plan más rápido.
 
-Para investigadores sin participaciones:
+Con LEFT JOIN, un padre sin hijos conserva una fila extendida con NULL: COUNT(*) da uno y COUNT(clave_hijo) da cero. Esa diferencia es importante para consultas que incluyen entidades sin relaciones.
+
+### Errores frecuentes
+
+Contar filas multiplicadas por otro join sobrecuenta entidades. COUNT(DISTINCT ...) puede expresar el conteo correcto, pero no sustituye analizar la causa. Mover condiciones de HAVING a WHERE solo es válido si conserva la semántica; una condición sobre el agregado no puede evaluarse sobre cada fila individual.
+
+### Qué recordar
+
+**Filtrar lo pertinente → contar la unidad correcta → aplicar el umbral → recuperar datos descriptivos.** [Referencia técnica](https://www.postgresql.org/docs/15/queries-table-expressions.html).
+
+## 6. Índices simples y compuestos
+
+### Idea central
+
+Un índice es una estructura adicional para localizar filas sin recorrer necesariamente toda la tabla. Ocupa espacio y cuesta mantenerlo al insertar, borrar o modificar datos. Su utilidad depende de la carga de consultas y de la fracción de filas que evita examinar.
+
+### Cómo razonarlo
+
+Un índice simple usa una columna; uno compuesto usa varias. En un árbol B+ compuesto, las entradas se ordenan por la primera columna y, dentro de ella, por las siguientes: (a,b) no organiza los datos igual que (b,a).
+
+Las condiciones de igualdad sobre el comienzo de la clave y el primer rango posterior suelen delimitar mejor la búsqueda. Condiciones posteriores aún pueden filtrarse en el índice, aunque no reduzcan del mismo modo el tramo recorrido. Este es el criterio básico del curso; no afirmar que una columna no inicial sea absolutamente inutilizable. Las capacidades concretas dependen del motor y la versión.
+
+En PostgreSQL, PK y UNIQUE crean índices automáticamente; las FK del lado que referencia no reciben automáticamente uno. Cambiar el orden de una PK compuesta conserva las combinaciones únicas permitidas, pero cambia su índice de soporte.
+
+### Ejemplo
 
 ```sql
-SELECT e.*
-FROM empleado e
-WHERE e.cargo = 'investigador'
-  AND NOT EXISTS (
-      SELECT 1
-      FROM trabaja_en t
-      WHERE t.id_empleado = e.id_empleado
-  );
+CREATE INDEX idx_trabaja_proyecto_empleado
+ON trabaja_en (cod_proyecto, id_empleado);
 ```
 
-NOT EXISTS es verdadero cuando no hay coincidencias. NOT IN requiere más cuidado: si su subconsulta produce NULL y no se encuentra una igualdad, puede dar UNKNOWN y excluir la fila. Una PK no nullable elimina ese problema concreto, pero no debe suponerse para cualquier consulta.
+Para localizar empleados de un proyecto, el primer componente agrupa las participaciones de ese proyecto. Un índice (id_empleado,cod_proyecto) favorece la dirección inversa: proyectos de un empleado. Si esa dirección ya la cubre la PK, evaluar el índice complementario en lugar de duplicarla.
 
-LEFT JOIN seguido de WHERE t.id_empleado IS NULL también puede expresar ausencia si se comprueba una columna del lado derecho que no puede ser NULL en una coincidencia real. Comprobar una columna nullable ajena a la unión podría confundir una coincidencia con valor NULL con una falta de coincidencia.
+Para nombre por prefijo y correo por igualdad, `(e_mail,nombre)` permite ubicar primero el correo y después el rango de nombres. Si el correo ya es único, el índice simple existente podría localizar como máximo una fila y volver innecesario el compuesto para estas consultas.
 
-### Qué buscar en el plan y cómo justificar
+### Errores frecuentes
 
-Tras una reescritura, comprobar si desaparece el acceso a proyecto y si se evita producir filas para luego eliminar duplicados. Un EXISTS o IN puede verse como Hash Semi Join, Nested Loop Semi Join u otra estrategia; no asumir un nodo obligatorio. NOT EXISTS puede resolverse con un anti join. Mirar filas reales y loops para verificar el trabajo realizado.
+No crear un índice por cada columna sin revisar los ya existentes. Muchos valores distintos no bastan para garantizar beneficio: `id > 50` puede devolver casi toda la tabla. Tampoco se debe elegir siempre «la columna más selectiva primero» ignorando igualdad, rangos y las otras consultas que compartirán el índice.
 
-La conclusión correcta distingue la equivalencia demostrada de una mejora de ejecución que hay que medir. Cambiar comas y condiciones en WHERE por JOIN ... ON hace más clara una unión interna, pero no garantiza otro plan ni fuerza por sí solo el orden físico de ejecución. Tampoco se pueden mover condiciones de outer joins libremente como si fueran inner joins.
+### Qué recordar
 
-### Método para detectar ensambles innecesarios
+Justificar columnas, orden, consultas beneficiadas y mantenimiento. Sin estadísticas no hay una elección universalmente óptima. [Índices compuestos](https://www.postgresql.org/docs/current/indexes-multicolumn.html).
 
-Para cada tabla, identificar qué aporta: columnas, filtros, existencia, multiplicidad o conexión con otras tablas. Si parece prescindible, demostrar que quitarla no incorpora filas, no elimina filas y no cambia repeticiones. Usar PK/UNIQUE, FK, NOT NULL y condiciones completas del join. Después comparar planes y mediciones.
+## 7. Índices según las condiciones de búsqueda
 
-Referencias: [joins y multiplicidad](https://www.postgresql.org/docs/current/queries-table-expressions.html), [EXISTS, IN y NOT IN](https://www.postgresql.org/docs/current/functions-subquery.html), [restricciones](https://www.postgresql.org/docs/current/ddl-constraints.html) y [orden de joins](https://www.postgresql.org/docs/current/explicit-joins.html).
+### Idea central
 
-## Temas pendientes
+El índice debe corresponder a la operación que realiza el filtro. Importa tanto la columna como la expresión y el operador que se usan sobre ella.
 
-4. DISTINCT y eliminación de duplicados.
-5. GROUP BY y HAVING.
-6. Índices simples, compuestos y orden de columnas.
-7. Índices ante igualdad, rangos, fechas, funciones y LIKE.
-8. Árboles B+ y Bitmap.
+### Cómo razonarlo
 
-## Material
+| Condición | Criterio inicial |
+|---|---|
+| columna = valor | B+ permite igualdad; valorar cuántas filas coinciden. |
+| columna > valor / BETWEEN | B+ permite localizar y recorrer un intervalo ordenado. |
+| nombre LIKE 'An%' | Hay prefijo fijo: un índice ordenado compatible puede ayudar. |
+| nombre LIKE '%Maria' | No hay comienzo fijo; un B+ normal no delimita un rango de prefijo útil. |
+| función(columna) = valor | Un índice sobre columna no equivale automáticamente a uno sobre la expresión. |
+| varios filtros | Evaluar un compuesto o combinación de índices, sin duplicar estructuras innecesarias. |
 
-Enunciado: Practicos/Practico 7 - Optimización de Consultas.docx, dentro de Bases de Datos, fuera del baúl. El práctico propone analizar planes y justificar índices.
+Un filtro aprovechable como condición de acceso por índice suele llamarse **sargable**. Dejar la columna sin transformar suele facilitarlo, pero toda reescritura debe conservar el significado.
 
-Referencias técnicas: [Using EXPLAIN](https://www.postgresql.org/docs/current/using-explain.html), [comando EXPLAIN](https://www.postgresql.org/docs/current/sql-explain.html) y [estadísticas del optimizador](https://www.postgresql.org/docs/current/planner-stats.html).
+### Ejemplo
+
+```sql
+-- Intervalo de un año: la columna queda directamente comparada.
+SELECT * FROM entrega
+WHERE fecha_entrega >= DATE '2023-01-01'
+  AND fecha_entrega < DATE '2024-01-01';
+```
+
+Expresa el año completo y puede usar un índice de fecha sin calcular el año para cada fila. Es preferible razonar con intervalos semiabiertos cuando existe hora, para no perder el último día.
+
+Un índice de expresión es otra posibilidad si la expresión y el motor lo permiten:
+
+```sql
+CREATE INDEX idx_tarea_amplitud
+ON tarea ((max_horas - min_horas));
+```
+
+Para `nombre LIKE 'An%'`, PostgreSQL puede necesitar una clase como varchar_pattern_ops según la intercalación. No es correcto prometer uso de cualquier índice textual. Para `'%Maria'`, si hay además igualdad por correo, este último puede localizar candidatos y luego comprobarse el sufijo.
+
+El ejercicio usa MONTHS_BETWEEN y SYSDATE, funciones de Oracle. PostgreSQL tiene otras operaciones de fecha. Convertir «antigüedad de cien meses» a una fecha límite es útil, pero no prueba equivalencia exacta con MONTHS_BETWEEN en los límites: su cálculo contempla reglas de fin de mes y fracciones.
+
+### Errores frecuentes
+
+No indexar una expresión dependiente del día actual como si fuera inmutable: los datos del índice no se actualizarían solos al pasar el tiempo. No confundir «consulta frecuente» con «índice siempre rentable». SELECT * también exige recuperar muchas columnas: hallar ubicaciones no elimina el costo de devolver sus datos.
+
+### Qué recordar
+
+Revisar igualdad/rango/patrón, expresiones, selectividad y límites temporales. [Tipos y patrones](https://www.postgresql.org/docs/15/indexes-types.html), [expresiones](https://www.postgresql.org/docs/current/indexes-expressional.html) y [MONTHS_BETWEEN](https://docs.oracle.com/database/121/SQLRF/functions114.htm).
+
+## 8. Árboles B+ y Bitmap
+
+### Idea central
+
+Las estructuras de índices resuelven necesidades diferentes. El práctico compara el árbol B+ con Bitmap: hay que elegir según las búsquedas y el modo de uso de los datos.
+
+### Cómo razonarlo
+
+El **árbol B+** es balanceado y tiene varios hijos por nodo. Los nodos internos guían la búsqueda; las hojas contienen entradas ordenadas y referencias a los datos, con enlaces que facilitan recorridos de rangos. No es un árbol binario. Sirve para igualdad, intervalos y acceso ordenado.
+
+Un **índice Bitmap** asocia valores con mapas de bits que representan ubicaciones de filas. Permite combinar condiciones mediante operaciones de bits. Es un candidato típico para columnas con pocos valores distintos y cargas principalmente de consulta, con pocas modificaciones concurrentes.
+
+| Criterio | Árbol B+ | Bitmap persistente |
+|---|---|---|
+| Igualdad selectiva | Habitualmente apropiado. | Puede servir; evaluar cardinalidad y carga. |
+| Rangos y orden | Ventaja natural por orden de claves. | No es la primera elección del práctico para estos casos. |
+| Pocos valores y combinación de filtros | Puede servir según la distribución. | Candidato típico. |
+| Muchas modificaciones concurrentes | Opción general habitual. | Su mantenimiento y bloqueo pueden hacerlo inconveniente. |
+
+### Ejemplo
+
+Supongamos cuatro distribuidores con tipos N,I,N,I. Un bitmap conceptual para N es `1010`: señala el primero y el tercero. Otro filtro puede producir `1100`; su AND da `1000`, dejando solo el primero. Es una ilustración; las implementaciones comprimen y organizan físicamente estos mapas.
+
+En el ejercicio 5, `tipo='N'` es el candidato natural a evaluar como Bitmap si el motor lo soporta y la carga lo favorece. Fecha e identificadores por rango se razonan inicialmente con B+.
+
+**Diferencia de PostgreSQL:** usa la denominación B-tree para su índice ordenado habitual y no ofrece un método estándar `USING bitmap` como índice persistente. Bitmap Index Scan en un plan puede construir un mapa en ejecución a partir de un B-tree: no demuestra que se haya creado un índice Bitmap.
+
+Hash es otra estructura: organiza búsquedas por igualdad y no proporciona orden ni rangos. No sustituye automáticamente a B+ y no es necesario añadirlo para toda igualdad.
+
+### Errores frecuentes
+
+«Pocos valores distintos» no basta para ordenar crear un índice: importan tamaño, combinación de filtros, proporción recuperada y mantenimiento. No confundir estructura Bitmap con estrategia de bitmap scan. No afirmar que B+ sea apropiado solo para rangos: también resuelve igualdad.
+
+### Qué recordar
+
+**Estructura + operador + distribución + carga de trabajo** justifican la elección. [PostgreSQL: tipos](https://www.postgresql.org/docs/15/indexes-types.html) y [bitmap scans](https://www.postgresql.org/docs/15/indexes-bitmap-scans.html); [Oracle: diseño de Bitmap](https://docs.oracle.com/en/database/oracle/oracle-database/21/tgdba/designing-and-developing-for-performance.html).
+
+## Checklist de repaso
+
+- [ ] Puedo leer un árbol de plan y distinguir estimado/real.
+- [ ] Puedo explicar las heurísticas y las estadísticas que usa el optimizador.
+- [ ] Justifico la equivalencia con claves, multiplicidades y NULL.
+- [ ] Distingo JOIN, EXISTS y ausencia.
+- [ ] Sé cuándo DISTINCT y COUNT cambian el resultado.
+- [ ] Elijo columnas y orden de índices con una justificación.
+- [ ] Analizo funciones, fechas y patrones LIKE.
+- [ ] Distingo B+, Bitmap persistente y bitmap scan.
+
+## Material y alcance
+
+Fuentes de cátedra, dentro de Bases de Datos y fuera del baúl:
+
+- Practicos/Practico 7 - Optimización de Consultas.docx, incluidos sus diagramas de investigación y mensajería.
+- Contenido extra/Filminas y Practicos de cursada/2023/BDI_07 (Optimizacion).pdf: procesamiento, heurísticas, estadísticas, equivalencias algebraicas y EXPLAIN.
+
+Las referencias oficiales de PostgreSQL complementan los detalles del motor; las reglas de Oracle se identifican donde las usa el enunciado. Los ejemplos numéricos del resumen son ilustrativos. Los planes comprobados y sus condiciones se documentan en la resolución.
