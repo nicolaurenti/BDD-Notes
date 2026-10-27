@@ -19,7 +19,7 @@ El auxiliar ROW **cuenta**, pero no inserta en HIS_ENTREGA. La auditoría visibl
 
 Esta parte crea seis contadores: uno por combinación de tabla y operación. La primera función pone a cero el correspondiente; la segunda suma una unidad por fila.
 
-```sql
+```mysql
 -- Alternativa STATEMENT. Requiere 02_tabla.sql. No instalar junto a 02_row.sql.
 -- Cada tabla/evento tiene un contador. Se prepara, acumula y registra.
 -- Supuestos del TP: pruebas secuenciales, sin recursión sobre la misma tabla.
@@ -60,7 +60,7 @@ Las dos funciones devuelven NULL porque se usarán en BEFORE STATEMENT y AFTER R
 
 El conteo ya fue preparado y acumulado por los auxiliares. Esta función no adivina las filas afectadas: lee el contador de la tabla y operación que dispararon el trigger.
 
-```sql
+```mysql
 CREATE OR REPLACE FUNCTION tp4_registrar_sentencia()
 RETURNS trigger AS $$
 DECLARE
@@ -91,7 +91,7 @@ Si no hubo filas, cantidad_filas vale cero y se registra igualmente la sentencia
 
 Cada tabla necesita preparar su conteo, acumular sus filas y registrar el resultado. Instalar estas cabeceras después de las tres funciones.
 
-```sql
+```mysql
 CREATE TRIGGER tp4_iniciar_entrega
 BEFORE INSERT OR UPDATE OR DELETE ON entrega
 FOR EACH STATEMENT EXECUTE PROCEDURE tp4_iniciar_conteo();

@@ -42,7 +42,7 @@ Implementación y pruebas del máximo de quince asociaciones por artículo. Se c
 Se supone que cada fila de CONTIENE representa una asociación única de artículo y palabra. Un control AFTER ROW puede consultar el estado que ya incluye la inserción o el cambio de artículo:
 
 ```sql
-CREATE OR REPLACE FUNCTION controlar_max_palabras()
+CREATE OR REPLACE FUNCTION controlar_max_palabras()AFTER
 RETURNS trigger AS $$
 DECLARE
     cantidad INTEGER;
