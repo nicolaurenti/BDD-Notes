@@ -243,9 +243,141 @@ Probar tareas con cero, cinco y seis voluntarios, además de los casos con NULL 
 
 Referencias: [subconsultas y NULL](https://www.postgresql.org/docs/current/functions-subquery.html), [joins, WHERE y agrupamiento](https://www.postgresql.org/docs/current/queries-table-expressions.html), [comparación de planes](https://www.postgresql.org/docs/current/using-explain.html) y [EXCEPT ALL](https://www.postgresql.org/docs/current/queries-union.html).
 
+## 3. Joins, subconsultas y ensambles innecesarios
+
+### Elegir según lo que pide la consulta
+
+Un join combina filas relacionadas. Una subconsulta puede proporcionar valores, una tabla derivada o una condición de existencia. Las formas no tienen una jerarquía fija de rendimiento: primero expresar correctamente el pedido y después comparar planes.
+
+| Necesidad | Forma que expresa directamente el pedido |
+|---|---|
+| Devolver datos de ambos lados o cada pareja coincidente | JOIN |
+| Devolver filas de un lado que tienen alguna coincidencia | EXISTS o IN |
+| Devolver filas sin coincidencias | NOT EXISTS |
+| Combinar con un resultado previamente agrupado | JOIN con una tabla derivada |
+
+Esta tabla orienta la escritura; no garantiza qué alternativa será más rápida.
+
+### Ejemplo del ejercicio 3.a
+
+El práctico pide los empleados investigadores que trabajan en algún proyecto:
+
+```sql
+SELECT DISTINCT e.*
+FROM empleado e
+JOIN trabaja_en t ON e.id_empleado = t.id_empleado
+JOIN proyecto p ON p.cod_proyecto = t.cod_proyecto
+WHERE e.cargo = 'investigador';
+```
+
+Para razonar, supongamos PK en empleado.id_empleado y proyecto.cod_proyecto, y PK compuesta (id_empleado, cod_proyecto) en trabaja_en. Cuando usemos la integridad referencial, supondremos que las FK se cumplen en los datos consultados.
+
+Empleado aporta los datos de salida y el filtro por cargo. Trabaja_en demuestra la participación. Proyecto solo verifica en esta consulta que el proyecto referenciado existe: no aporta columnas al resultado ni filtros adicionales.
+
+### Cuándo se puede quitar proyecto
+
+Si trabaja_en.cod_proyecto tiene una FK válida hacia proyecto.cod_proyecto y es NOT NULL, toda participación encuentra exactamente un proyecto: la FK asegura existencia y la PK del destino asegura unicidad. El join no descarta ni multiplica participaciones. Puede retirarse:
+
+```sql
+SELECT DISTINCT e.*
+FROM empleado e
+JOIN trabaja_en t ON e.id_empleado = t.id_empleado
+WHERE e.cargo = 'investigador';
+```
+
+En este esquema hipotético, cod_proyecto ya es NOT NULL por pertenecer a la PK compuesta. No alcanza con asumir una FK: hay que comprobar las restricciones del esquema del ejercicio.
+
+La diferencia entre existencia y unicidad es importante: sin existencia garantizada el join puede excluir huérfanos; sin unicidad puede multiplicar coincidencias.
+
+### Situaciones en las que no se puede quitar sin más
+
+- Si cod_proyecto admite NULL, la FK puede permitir esa fila y el INNER JOIN original la excluye. En un esquema así, al quitar proyecto habría que conservar ese descarte mediante t.cod_proyecto IS NOT NULL, siempre que las restantes condiciones aseguren la equivalencia.
+- Si hay referencias inexistentes, quitar el join puede incorporar empleados que antes no aparecían.
+- Si se filtra por p.nombre = 'IA', proyecto decide qué participaciones cuentan: se necesita consultar esa información.
+- Si se devuelve p.nombre, proyecto aporta un dato de salida.
+- Si proyecto conecta dos tablas que no tienen otro enlace equivalente, funciona como puente: no es prescindible solo porque no aparezca en SELECT.
+
+Para una FK compuesta debe verificarse la correspondencia de todas las columnas y su política de NULL. Una igualdad sobre una parte de la clave no garantiza una única coincidencia.
+
+En la consulta original, empleado no puede retirarse directamente: se necesitan e.* y e.cargo. Trabaja_en tampoco: sin ella se perdería la condición de participar en algún proyecto.
+
+### Evitar multiplicaciones cuando solo interesa existencia
+
+Supongamos estas participaciones ilustrativas:
+
+| Empleado | Cargo | Proyectos |
+|---|---|---|
+| Ana | investigador | 10 y 20 |
+| Bruno | investigador | 10 |
+| Carla | investigador | ninguno |
+
+El join con trabaja_en produce Ana dos veces y Bruno una vez. DISTINCT devuelve Ana y Bruno una sola vez.
+
+Podemos expresar directamente «tiene al menos una participación»:
+
+```sql
+SELECT e.*
+FROM empleado e
+WHERE e.cargo = 'investigador'
+  AND EXISTS (
+      SELECT 1
+      FROM trabaja_en t
+      WHERE t.id_empleado = e.id_empleado
+  );
+```
+
+Bajo los supuestos de FK/NOT NULL anteriores, esta consulta conserva el resultado de la original. EXISTS conserva cada fila exterior que tiene alguna coincidencia; no genera una copia por cada participación. Como e.* incluye la PK, no hay empleados distintos con la misma fila completa: aquí no se necesita DISTINCT.
+
+SELECT 1 no significa que se devuelva el número 1 en el resultado exterior; en este EXISTS simple solo interesa que haya una fila. La referencia a e.id_empleado hace que la subconsulta sea correlacionada: su condición depende del empleado exterior. Esto describe su significado, no obliga a ejecutar una subconsulta completa por cada empleado; PostgreSQL puede transformarla en un plan de semijoin.
+
+Si se proyectara solamente e.nombre, dos empleados distintos llamados Ana podrían producir dos filas iguales con EXISTS; SELECT DISTINCT e.nombre produciría una sola. La equivalencia depende de la proyección y de sus duplicados.
+
+### Otra alternativa: IN
+
+```sql
+SELECT e.*
+FROM empleado e
+WHERE e.cargo = 'investigador'
+  AND e.id_empleado IN (
+      SELECT t.id_empleado FROM trabaja_en t
+  );
+```
+
+En este uso positivo de IN dentro de WHERE, se seleccionan los empleados cuyo identificador coincide con alguna participación. Los identificadores repetidos de la subconsulta no repiten la fila exterior. Puede resultar equivalente a EXISTS y producir un plan parecido; no hay que convertir siempre IN en JOIN.
+
+### Buscar ausencia y tratar NULL
+
+Para investigadores sin participaciones:
+
+```sql
+SELECT e.*
+FROM empleado e
+WHERE e.cargo = 'investigador'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM trabaja_en t
+      WHERE t.id_empleado = e.id_empleado
+  );
+```
+
+NOT EXISTS es verdadero cuando no hay coincidencias. NOT IN requiere más cuidado: si su subconsulta produce NULL y no se encuentra una igualdad, puede dar UNKNOWN y excluir la fila. Una PK no nullable elimina ese problema concreto, pero no debe suponerse para cualquier consulta.
+
+LEFT JOIN seguido de WHERE t.id_empleado IS NULL también puede expresar ausencia si se comprueba una columna del lado derecho que no puede ser NULL en una coincidencia real. Comprobar una columna nullable ajena a la unión podría confundir una coincidencia con valor NULL con una falta de coincidencia.
+
+### Qué buscar en el plan y cómo justificar
+
+Tras una reescritura, comprobar si desaparece el acceso a proyecto y si se evita producir filas para luego eliminar duplicados. Un EXISTS o IN puede verse como Hash Semi Join, Nested Loop Semi Join u otra estrategia; no asumir un nodo obligatorio. NOT EXISTS puede resolverse con un anti join. Mirar filas reales y loops para verificar el trabajo realizado.
+
+La conclusión correcta distingue la equivalencia demostrada de una mejora de ejecución que hay que medir. Cambiar comas y condiciones en WHERE por JOIN ... ON hace más clara una unión interna, pero no garantiza otro plan ni fuerza por sí solo el orden físico de ejecución. Tampoco se pueden mover condiciones de outer joins libremente como si fueran inner joins.
+
+### Método para detectar ensambles innecesarios
+
+Para cada tabla, identificar qué aporta: columnas, filtros, existencia, multiplicidad o conexión con otras tablas. Si parece prescindible, demostrar que quitarla no incorpora filas, no elimina filas y no cambia repeticiones. Usar PK/UNIQUE, FK, NOT NULL y condiciones completas del join. Después comparar planes y mediciones.
+
+Referencias: [joins y multiplicidad](https://www.postgresql.org/docs/current/queries-table-expressions.html), [EXISTS, IN y NOT IN](https://www.postgresql.org/docs/current/functions-subquery.html), [restricciones](https://www.postgresql.org/docs/current/ddl-constraints.html) y [orden de joins](https://www.postgresql.org/docs/current/explicit-joins.html).
+
 ## Temas pendientes
 
-3. Joins, subconsultas y ensambles innecesarios.
 4. DISTINCT y eliminación de duplicados.
 5. GROUP BY y HAVING.
 6. Índices simples, compuestos y orden de columnas.
