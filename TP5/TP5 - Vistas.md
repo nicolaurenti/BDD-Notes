@@ -199,6 +199,25 @@ En cambio, si la fila ya es visible, se propone el cambio y CHECK OPTION comprue
 
 ### Cuando hay vistas anidadas: LOCAL y CASCADED
 
+#### Repaso comparativo: sin CO, con CO, LOCAL y CASCADED
+
+CO significa CHECK OPTION. No son cuatro mecanismos independientes: sin CO no agregamos un chequeo; con CO sí, y elegimos su alcance mediante LOCAL o CASCADED. Escribir WITH CHECK OPTION sin modalidad equivale a WITH CASCADED CHECK OPTION.
+
+Usamos siempre la misma cadena: `envio → V1 (cantidad >= 500) → V2 (cantidad < 1000)`. **V1 no tiene CHECK OPTION.** Comparamos distintas definiciones de V2; cada inserción es independiente y cumple las restricciones base.
+
+| Definición del control en V2 | Condiciones comprobadas al insertar por V2 | Insertar 300 | Insertar 700 | Insertar 1200 |
+| --- | --- | --- | --- | --- |
+| Sin CHECK OPTION | Ningún filtro de la cadena como chequeo de escritura | Se inserta; queda oculta | Se inserta; se ve | Se inserta; queda oculta en V2 |
+| WITH LOCAL CHECK OPTION | cantidad < 1000 | Se inserta; queda oculta | Se inserta; se ve | Se rechaza |
+| WITH CASCADED CHECK OPTION | cantidad >= 500 y cantidad < 1000 | Se rechaza | Se inserta; se ve | Se rechaza |
+| WITH CHECK OPTION | Igual que CASCADED | Se rechaza | Se inserta; se ve | Se rechaza |
+
+Al consultar V2, en todos los casos se aplican ambos filtros: solo se ven cantidades desde 500 inclusive hasta 1000 sin incluirlo. Aceptar una inserción y mostrar su fila son cuestiones distintas.
+
+**Segunda situación:** si V1 ya tiene su propio CHECK OPTION, este sigue actuando aunque V2 no tenga CO o tenga LOCAL. Por eso, en esa situación, insertar 300 por V2 se rechaza también en ambos casos. No tener CO en la vista superior no apaga los controles inferiores.
+
+Para UPDATE se comprueba el valor resultante: cambiar una fila visible de 700 a 300 sigue la misma comparación. Los controles no evitan las modificaciones directas en la tabla base.
+
 Con vistas sobre otras vistas, hay que precisar qué condiciones se comprueban:
 
 - `WITH LOCAL CHECK OPTION` agrega el control de la condición de la vista actual; los controles propios de las vistas inferiores siguen vigentes.
