@@ -18,7 +18,7 @@ Se implementan con triggers los controles del TP3 que requieren consultar otras 
 
 Para 5.a, la forma local es:
 
-```sql
+```mysql
 ALTER TABLE voluntario
 ADD CONSTRAINT tp4_edad_maxima
 CHECK (EXTRACT(YEAR FROM AGE(CURRENT_DATE, fecha_nacimiento)) <= 70);

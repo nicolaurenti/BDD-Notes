@@ -2,7 +2,6 @@
 tags:
   - tp8
 ---
-
 # Planes serializables y grafos de precedencia
 
 Un **plan de ejecución** o *schedule* ordena las operaciones de varias transacciones, respetando el orden interno de cada una.
