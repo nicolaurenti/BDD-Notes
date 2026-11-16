@@ -1,3 +1,4 @@
 # Arquitectura y funcionamiento de Android
 
 - [[Fundamentos de Android/Arquitectura y funcionamiento de Android/Arquitectura del sistema operativo Android (Linux Kernel, HAL, ART, Framework)|Arquitectura del sistema operativo Android (Linux Kernel, HAL, ART, Framework)]]
+- [[Fundamentos de Android/Arquitectura y funcionamiento de Android/Android Runtime (ART) y ejecución de aplicaciones|Android Runtime (ART) y ejecución de aplicaciones]]
