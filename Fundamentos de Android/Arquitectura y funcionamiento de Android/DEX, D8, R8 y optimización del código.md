@@ -18,7 +18,9 @@ Un archivo DEX contiene definiciones de clases, instrucciones y tablas compartid
 
 En la ruta habitual sin optimización de la aplicación, el Android Gradle Plugin usa D8 para convertir bytecode JVM a DEX. D8 también puede combinar DEX intermedios, lo cual permite reutilizar parte del trabajo de builds incrementales. En esa conversión puede hacer *desugaring*: reescribe ciertas construcciones del bytecode a una forma compatible con versiones anteriores de Android. Una lambda compilada usando una característica que el nivel de API objetivo para compatibilidad no soporta puede representarse mediante una clase generada. Por separado, algunas APIs de biblioteca de Java requieren configurar *core library desugaring*. La compatibilidad del lenguaje y la disponibilidad de una API se resuelven en niveles distintos. [D8](https://developer.android.com/tools/d8) · [Desugaring de lenguaje y de bibliotecas](https://developer.android.com/studio/write/java8-support).
 
-Con la optimización habilitada, R8 analiza y transforma el programa y genera DEX como parte de esa ruta del build. El modelo útil para depurar es comparar los DEX finales de ambas rutas. La diferencia entre ellos incluye las decisiones que tomó el optimizador sobre qué preservar, cómo reescribirlo y con qué nombres emitirlo. [Cómo funciona R8](https://developer.android.com/topic/performance/app-optimization/enable-app-optimization#r8-optimization-overview).
+## Qué es R8
+
+**R8 es el compilador optimizador de aplicaciones que integra el Android Gradle Plugin (AGP).** Se ejecuta durante el build y trabaja sobre el código compilado de la app y sus dependencias. Analiza qué código puede alcanzarse, elimina lo que sobra, reescribe partes del programa y puede acortar nombres. Después genera el DEX optimizado que se empaqueta en el APK o AAB. Activás R8 en la configuración de Gradle del módulo Android de aplicación. En el teléfono, ART carga y ejecuta los DEX resultantes. [Cómo funciona R8](https://developer.android.com/topic/performance/app-optimization/enable-app-optimization#r8-optimization-overview).
 
 ## Qué puede sacar R8 y cómo reconocerlo
 
@@ -27,6 +29,53 @@ R8 construye un grafo de referencias a partir de puntos de entrada de la app, en
 R8 también puede reescribir código alcanzable. Con *method inlining*, por ejemplo, puede poner el cuerpo de una función auxiliar directamente donde se la llama. Eso deja a R8 analizar juntos el cuerpo y los valores conocidos en ese lugar. Si la función ya quedó incorporada en sus llamadas y no hace falta conservar una definición separada, buscar su nombre en el APK puede dar cero resultados aunque el comportamiento siga disponible. Esta optimización tampoco implica por sí sola un ahorro de bytes: copiar un cuerpo a varios lugares tiene un costo que puede compensarse con otras simplificaciones. [Transformaciones de R8](https://developer.android.com/topic/performance/app-optimization/enable-app-optimization#r8-optimization-overview).
 
 La ofuscación acorta nombres de clases, campos y métodos. Si R8 cambia el nombre de una clase, también puede actualizar las referencias que controla. Eso reduce el tamaño de sus representaciones y cambia los nombres que aparecen en los stack traces. El artefacto `mapping.txt` permite relacionar esos nombres con los originales. Usá el mapping del build exacto que produjo el APK o AAB: incluso un build cercano puede tener un mapeo distinto. [APK Analyzer y mapeos](https://developer.android.com/studio/debug/apk-analyzer#load_proguard_mappings) · [R8 retrace](https://developer.android.com/tools/retrace).
+
+## Cómo activar R8 en el módulo de aplicación
+
+### Configurá la variante release
+
+Abrí el `build.gradle.kts` del módulo que aplica `com.android.application`, habitualmente `app/build.gradle.kts`. Verificá qué versión de AGP declara el proyecto. Si usa un catálogo de versiones, podés encontrarla siguiendo la referencia del plugin en `gradle/libs.versions.toml`. Agregá la configuración dentro del bloque `release` que ya tengas, junto a las opciones de firma y las demás opciones de esa variante. [Configuración según la versión de AGP](https://developer.android.com/topic/performance/app-optimization/enable-app-optimization#enable-optimization).
+
+Si el proyecto usa el DSL clásico de AGP, este es el bloque completo de optimización dentro de Kotlin DSL.
+
+```kotlin
+android {
+    buildTypes {
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+    }
+}
+```
+
+`isMinifyEnabled` activa la optimización del código con R8. `isShrinkResources` habilita la reducción de recursos y requiere que la optimización de código esté activada. Las reglas predeterminadas vienen del plugin. `proguard-rules.pro` es el archivo de reglas propias del módulo. Si lo referenciás, crealo junto al `build.gradle.kts` si todavía no existe. El nombre conserva la sintaxis de reglas de ProGuard y AGP las aplica con R8. En la app de compras, ahí iría la regla sobre la fábrica promocional si el servidor todavía la identifica por nombre. [Configuración clásica de R8](https://developer.android.com/topic/performance/app-optimization/enable-app-optimization#legacy-dsl-for-agp-versions-lower-than-93) · [Reglas de conservación](https://developer.android.com/topic/performance/app-optimization/add-keep-rules).
+
+Si el proyecto usa el DSL nuevo de **AGP 9.3 o superior**, el equivalente para activar código y recursos es:
+
+```kotlin
+android {
+    buildTypes {
+        release {
+            optimization {
+                enable = true
+            }
+        }
+    }
+}
+```
+
+Ese bloque incorpora las reglas predeterminadas de Android. Con este DSL, guardá las reglas propias como archivos `.keep` en el directorio de reglas del *source set* que corresponda. Por ejemplo, `app/src/release/keepRules/promo.keep` para release o `app/src/main/keepRules/promo.keep` para las variantes que compartan ese contrato. [DSL de optimización a partir de AGP 9.3](https://developer.android.com/topic/performance/app-optimization/enable-app-optimization#for-agp-versions-93-and-higher).
+
+### Generá y probá el artefacto optimizado
+
+Desde la raíz del proyecto, ejecutá `./gradlew :app:assembleRelease` para generar el APK o `./gradlew :app:bundleRelease` para generar el AAB. Si el módulo tiene otro nombre, usá su ruta de Gradle. Con flavors, elegí la tarea correspondiente, por ejemplo `:app:assembleProdRelease`. Para instalar un APK de release, necesitás que esté firmado. Si probás desde un AAB generado localmente, prepará el conjunto instalable con `bundletool`. [Compilación desde la línea de comandos](https://developer.android.com/build/building-cmdline) · [Firma de apps](https://developer.android.com/studio/publish/app-signing) · [Pruebas con bundletool](https://developer.android.com/tools/bundletool).
+
+En el módulo, buscá `build/outputs/mapping/<variante>/mapping.txt`, habitualmente `app/build/outputs/mapping/release/mapping.txt`. Guardalo junto al artefacto de esa build antes de recompilar. Podés cargarlo en APK Analyzer para inspeccionar los nombres originales. Después instalá la versión optimizada y recorré las funciones críticas. En el ejemplo, abrir la app solo verifica el arranque. Para verificar el contrato de la pantalla promocional, activá la configuración que la muestra y recorré el flujo hasta que la fábrica se carga y abre la pantalla. Los comandos son ejemplos para adaptar al proyecto. [Mapeos en APK Analyzer](https://developer.android.com/studio/debug/apk-analyzer#load_proguard_mappings) · [Pruebas de la app optimizada](https://developer.android.com/topic/performance/app-optimization/test-the-optimization).
 
 ## Cómo medir el ahorro
 
